@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-dark: #0f294d;
+  --accent-orange: #f9a825;
+}
+
+body {
+  @apply bg-light-gray text-text-dark font-sans;
+}
+
+.btn-primary {
+  @apply bg-accent-orange text-white px-6 py-2 rounded-md font-semibold hover:bg-opacity-90 transition-all;
+}
+
+.container {
+  @apply max-w-[1200px] mx-auto px-4;
+}
