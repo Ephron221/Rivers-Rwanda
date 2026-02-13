@@ -130,3 +130,5 @@
 {"level":"info","message":"✓ Server running on port 5000","timestamp":"2026-02-13T17:51:26.597Z"}
 {"level":"info","message":"✓ Database connected successfully","timestamp":"2026-02-13T17:56:32.927Z"}
 {"level":"info","message":"✓ Database connected successfully","timestamp":"2026-02-13T18:02:48.152Z"}
+{"level":"error","message":"500 - Out of range value for column 'sale_price' at row 1 - /api/v1/vehicles - POST - ::1","timestamp":"2026-02-13T20:26:22.958Z"}
+{"level":"error","message":"500 - Out of range value for column 'sale_price' at row 1 - /api/v1/vehicles - POST - ::1","timestamp":"2026-02-13T20:26:40.030Z"}

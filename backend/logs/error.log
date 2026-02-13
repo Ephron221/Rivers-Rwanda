@@ -62,3 +62,5 @@
 {"level":"error","message":"500 - Unknown column 'earned_date' in 'order clause' - /api/v1/agents/commissions - GET - ::1","timestamp":"2026-02-12T19:15:55.756Z"}
 {"level":"error","message":"500 - Unknown column 'profile_image' in 'field list' - /api/v1/users/profile - PATCH - ::1","timestamp":"2026-02-13T15:18:23.275Z"}
 {"level":"error","message":"500 - Unknown column 'profile_image' in 'field list' - /api/v1/users/profile - PATCH - ::1","timestamp":"2026-02-13T16:51:54.680Z"}
+{"level":"error","message":"500 - Out of range value for column 'sale_price' at row 1 - /api/v1/vehicles - POST - ::1","timestamp":"2026-02-13T20:26:22.958Z"}
+{"level":"error","message":"500 - Out of range value for column 'sale_price' at row 1 - /api/v1/vehicles - POST - ::1","timestamp":"2026-02-13T20:26:40.030Z"}
