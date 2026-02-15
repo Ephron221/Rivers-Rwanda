@@ -4,7 +4,10 @@ import { authenticate, authorize } from '../middleware/auth.middleware';
 
 const router = Router();
 
-router.post('/', authenticate, authorize('client'), createBooking);
+// Allow both clients and agents to create bookings
+router.post('/', authenticate, authorize('client', 'agent'), createBooking);
+
+// These routes should likely remain client-specific
 router.get('/my', authenticate, authorize('client'), getMyBookings);
 router.patch('/:id/cancel', authenticate, authorize('client'), cancelBooking);
 
