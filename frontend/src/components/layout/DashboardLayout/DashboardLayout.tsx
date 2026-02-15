@@ -12,8 +12,10 @@ import {
   ShieldCheck, 
   Banknote,
   Menu,
-  X
+  X,
+  Globe
 } from 'lucide-react';
+import Footer from '../Footer/Footer'; // Import the main footer
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -81,7 +83,14 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
           ))}
         </ul>
       </nav>
-      <div className="p-4 border-t border-white/10">
+      <div className="p-4 border-t border-white/10 space-y-2">
+        <Link 
+          to="/"
+          className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-gray-300 hover:bg-white/10 hover:text-white transition-all duration-200"
+        >
+          <Globe size={20} />
+          <span className="font-medium">Back to Main Site</span>
+        </Link>
         <button 
           onClick={handleLogout} 
           className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-gray-300 hover:bg-red-500 hover:text-white transition-all duration-200"
@@ -94,47 +103,50 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
   );
 
   return (
-    <div className="flex min-h-screen bg-gray-100 font-sans">
-      {/* Static Sidebar for Desktop */}
-      <aside className="w-72 bg-primary-dark text-white flex-col shadow-2xl shrink-0 hidden lg:flex">
-        <SidebarContent />
-      </aside>
-
-      {/* Mobile Sidebar & Overlay */}
-      <div className={`fixed inset-0 z-40 lg:hidden ${isSidebarOpen ? 'block' : 'hidden'}`}>
-        {/* Overlay */}
-        <div className="fixed inset-0 bg-black/60" onClick={() => setSidebarOpen(false)}></div>
-        
-        {/* Sidebar */}
-        <div className="relative flex flex-col w-72 h-full bg-primary-dark text-white shadow-2xl">
-          <button 
-            onClick={() => setSidebarOpen(false)} 
-            className="absolute top-5 right-5 text-gray-300 hover:text-white z-50"
-          >
-            <X size={24} />
-          </button>
+    <div className="flex flex-col min-h-screen bg-gray-100 font-sans">
+      <div className="flex flex-1">
+        {/* Static Sidebar for Desktop */}
+        <aside className="w-72 bg-primary-dark text-white flex-col shadow-2xl shrink-0 hidden lg:flex">
           <SidebarContent />
+        </aside>
+
+        {/* Mobile Sidebar & Overlay */}
+        <div className={`fixed inset-0 z-40 lg:hidden ${isSidebarOpen ? 'block' : 'hidden'}`}>
+          {/* Overlay */}
+          <div className="fixed inset-0 bg-black/60" onClick={() => setSidebarOpen(false)}></div>
+          
+          {/* Sidebar */}
+          <div className="relative flex flex-col w-72 h-full bg-primary-dark text-white shadow-2xl">
+            <button 
+              onClick={() => setSidebarOpen(false)} 
+              className="absolute top-5 right-5 text-gray-300 hover:text-white z-50"
+            >
+              <X size={24} />
+            </button>
+            <SidebarContent />
+          </div>
         </div>
+
+        <main className="flex-1 flex flex-col max-h-screen w-full">
+          <header className="lg:hidden bg-primary-dark shadow-md sticky top-0 z-10 flex items-center justify-between p-4 h-20">
+            <Link to="/" className="flex items-center gap-1 group">
+              <span className="text-xl font-black text-accent-orange tracking-tighter uppercase">Rivers</span>
+              <span className="text-xl font-black text-white tracking-tighter uppercase">Rwanda</span>
+            </Link>
+            <button 
+              onClick={() => setSidebarOpen(true)} 
+              className="text-white p-2 rounded-md hover:bg-white/10"
+            >
+              <Menu size={28} />
+            </button>
+          </header>
+
+          <div className="flex-1 overflow-y-auto p-6 md:p-10">
+            {children}
+          </div>
+        </main>
       </div>
-
-      <main className="flex-1 flex flex-col h-screen">
-        <header className="lg:hidden bg-primary-dark shadow-md sticky top-0 z-10 flex items-center justify-between p-4 h-20">
-          <Link to="/" className="flex items-center gap-1 group">
-            <span className="text-xl font-black text-accent-orange tracking-tighter uppercase">Rivers</span>
-            <span className="text-xl font-black text-white tracking-tighter uppercase">Rwanda</span>
-          </Link>
-          <button 
-            onClick={() => setSidebarOpen(true)} 
-            className="text-white p-2 rounded-md hover:bg-white/10"
-          >
-            <Menu size={28} />
-          </button>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-6 md:p-10">
-          {children}
-        </div>
-      </main>
+      <Footer />
     </div>
   );
 };

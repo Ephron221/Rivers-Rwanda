@@ -4,6 +4,7 @@ import StatsSection from '../../components/home/StatsSection/StatsSection';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Clock, Award, Users, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import FeaturedVehicles from '../../components/home/FeaturedVehicles/FeaturedVehicles'; // Import the new component
 
 const Home = () => {
   return (
@@ -13,6 +14,20 @@ const Home = () => {
       <div className="container mx-auto py-12 px-4">
         {/* Featured Listings Section */}
         <FeaturedListings />
+
+        {/* Featured Vehicles Section */}
+        <section className="py-20">
+            <div className="text-center mb-16">
+                <h2 className="text-accent-orange font-black uppercase tracking-[0.3em] text-xs mb-4">Our Fleet</h2>
+                <h3 className="text-4xl font-black text-primary-dark tracking-tighter uppercase">Featured <span className="text-accent-orange">Vehicles</span></h3>
+            </div>
+            <FeaturedVehicles />
+            <div className="text-center mt-16">
+                <Link to="/cars" className="bg-primary-dark text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-accent-orange transition-all duration-500 shadow-xl">
+                    View All Vehicles
+                </Link>
+            </div>
+        </section>
 
         {/* Why Choose Us Section */}
         <section className="py-20">
