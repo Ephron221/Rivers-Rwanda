@@ -34,7 +34,7 @@ CREATE TABLE clients (
     city VARCHAR(100),
     district VARCHAR(100),
     street_address TEXT,
-    profile_picture VARCHAR(255),
+    profile_image VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -48,6 +48,7 @@ CREATE TABLE agents (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     phone_number VARCHAR(20) NOT NULL,
+    profile_image VARCHAR(255),
     business_name VARCHAR(255),
     business_type ENUM('individual', 'company') DEFAULT 'individual',
     tax_id VARCHAR(50),
@@ -212,7 +213,22 @@ CREATE TABLE system_settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+-- 12. ADMIN_PROFILES TABLE
+CREATE TABLE admin_profiles (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36) UNIQUE NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    phone_number VARCHAR(20),
+    profile_image VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- INITIAL SEED DATA (Admin)
+-- IMPORTANT: Replace 'YOUR_BCRYPT_HASH_HERE' with an actual bcrypt hash of your password.
 INSERT INTO users (id, email, password_hash, role, status, email_verified)
-VALUES ('admin-uuid-1234', 'admin@riversrwanda.com', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5.Z3iJ.iKJHEa', 'admin', 'active', TRUE);
+VALUES ('admin-uuid-1234', 'esront21@gmail.com', 'YOUR_BCRYPT_HASH_HERE', 'admin', 'active', TRUE);
+
 -- Note: UUID above is a placeholder, in real app use UUID()

@@ -2,17 +2,24 @@ import { Request, Response, NextFunction } from 'express';
 import * as CommissionModel from '../models/Commission.model';
 import { query } from '../database/connection';
 
+// Helper function to get agent ID from user ID
+const getAgentId = async (userId: string | undefined): Promise<string | null> => {
+    if (!userId) return null;
+    try {
+        const result = await query<any[]>('SELECT id FROM agents WHERE user_id = ?', [userId]);
+        return result.length > 0 ? result[0].id : null;
+    } catch (error) {
+        console.error("Error fetching agent ID:", error);
+        return null;
+    }
+};
+
 export const getMyCommissions = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.userId;
-    // We need the agent_id from the agents table using the user_id
-    const agentResult = await query('SELECT id FROM agents WHERE user_id = ?', [userId]);
-    
-    if (agentResult.length === 0) {
-      return res.status(404).json({ success: false, message: 'Agent profile not found' });
+    const agentId = await getAgentId(req.user?.userId);
+    if (!agentId) {
+      return res.status(404).json({ success: false, message: 'Agent profile not found.' });
     }
-
-    const agentId = agentResult[0].id;
     const commissions = await CommissionModel.getCommissionsByAgentId(agentId);
     res.status(200).json({ success: true, data: commissions });
   } catch (error) {
@@ -22,14 +29,10 @@ export const getMyCommissions = async (req: Request, res: Response, next: NextFu
 
 export const getMyStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.userId;
-    const agentResult = await query('SELECT id FROM agents WHERE user_id = ?', [userId]);
-    
-    if (agentResult.length === 0) {
-      return res.status(404).json({ success: false, message: 'Agent profile not found' });
+    const agentId = await getAgentId(req.user?.userId);
+    if (!agentId) {
+      return res.status(404).json({ success: false, message: 'Agent profile not found.' });
     }
-
-    const agentId = agentResult[0].id;
     const stats = await CommissionModel.getAgentStats(agentId);
     res.status(200).json({ success: true, data: stats });
   } catch (error) {
@@ -40,13 +43,14 @@ export const getMyStats = async (req: Request, res: Response, next: NextFunction
 export const getMyReferralCode = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
-    const agentResult = await query('SELECT referral_code FROM agents WHERE user_id = ?', [userId]);
-    
-    if (agentResult.length === 0) {
-      return res.status(404).json({ success: false, message: 'Agent profile not found' });
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User not authenticated.' });
     }
-
-    res.status(200).json({ success: true, data: { referral_code: agentResult[0].referral_code } });
+    const result = await query<any[]>('SELECT referral_code FROM agents WHERE user_id = ?', [userId]);
+    if (result.length === 0) {
+      return res.status(404).json({ success: false, message: 'Agent profile not found.' });
+    }
+    res.status(200).json({ success: true, data: { referral_code: result[0].referral_code } });
   } catch (error) {
     next(error);
   }
@@ -54,22 +58,18 @@ export const getMyReferralCode = async (req: Request, res: Response, next: NextF
 
 export const getMyClients = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const userId = req.user?.userId;
-        const agentResult = await query('SELECT id FROM agents WHERE user_id = ?', [userId]);
-        
-        if (agentResult.length === 0) {
-            return res.status(404).json({ success: false, message: 'Agent profile not found' });
+        const agentId = await getAgentId(req.user?.userId);
+        if (!agentId) {
+            return res.status(404).json({ success: false, message: 'Agent profile not found.' });
         }
 
-        const agentId = agentResult[0].id;
-        // Clients referred by this agent (found in bookings)
         const sql = `
             SELECT DISTINCT c.first_name, c.last_name, u.email, b.created_at as referred_at
             FROM bookings b
-            JOIN clients cl ON b.client_id = cl.id
-            JOIN users u ON cl.user_id = u.id
-            JOIN clients c ON cl.id = c.id
+            INNER JOIN clients c ON b.client_id = c.id
+            INNER JOIN users u ON c.user_id = u.id
             WHERE b.agent_id = ?
+            ORDER BY referred_at DESC
         `;
         const clients = await query(sql, [agentId]);
         res.status(200).json({ success: true, data: clients });

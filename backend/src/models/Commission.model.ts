@@ -7,7 +7,7 @@ export interface Commission extends RowDataPacket {
   booking_id: string;
   amount: number;
   status: 'pending' | 'approved' | 'paid' | 'cancelled';
-  created_at: Date;
+  earned_at: Date;
   paid_at?: Date;
 }
 
@@ -20,12 +20,10 @@ export const createCommission = async (data: any): Promise<void> => {
 };
 
 export const getCommissionsByAgentId = async (agentId: string): Promise<Commission[]> => {
-  // Use created_at instead of earned_date which might be missing
-  const sql = 'SELECT * FROM commissions WHERE agent_id = ? ORDER BY created_at DESC';
+  const sql = 'SELECT * FROM commissions WHERE agent_id = ? ORDER BY earned_at DESC';
   try {
     return await query<Commission[]>(sql, [agentId]);
   } catch (error) {
-    // Fallback if table doesn't exist yet or columns differ
     console.error('Database error in getCommissionsByAgentId:', error);
     return [];
   }
