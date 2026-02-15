@@ -1,5 +1,6 @@
 import { query } from '../database/connection';
 import { RowDataPacket } from 'mysql2';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface Booking extends RowDataPacket {
   id: string;
@@ -18,13 +19,15 @@ const generateReference = () => {
   return 'RR' + Math.random().toString(36).substr(2, 9).toUpperCase();
 };
 
-export const createBooking = async (data: any): Promise<void> => {
+export const createBooking = async (data: any): Promise<Booking> => {
   const reference = generateReference();
+  const bookingId = uuidv4();
   const sql = `
     INSERT INTO bookings (id, booking_type, booking_reference, client_id, agent_id, accommodation_id, vehicle_id, total_amount, booking_status)
-    VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, 'pending')
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
   `;
   await query(sql, [
+    bookingId,
     data.booking_type,
     reference,
     data.client_id,
@@ -33,6 +36,9 @@ export const createBooking = async (data: any): Promise<void> => {
     data.vehicle_id || null,
     data.total_amount
   ]);
+
+  const [newBooking] = await query<Booking[]>('SELECT * FROM bookings WHERE id = ?', [bookingId]);
+  return newBooking;
 };
 
 export const getBookingsByClientId = async (clientId: string): Promise<Booking[]> => {
