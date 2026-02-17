@@ -120,21 +120,24 @@ const ClientBookings = () => {
                     <span className="text-sm font-black text-primary-dark">Rwf {b.total_amount.toLocaleString()}</span>
                   </td>
                   <td className="px-8 py-6">
-                    <div className="flex justify-center gap-2">
+                    <div className="flex justify-center items-center gap-2">
                         {b.payment_proof_path && (
                             <a href={`http://localhost:5000${b.payment_proof_path}`} target="_blank" rel="noreferrer" className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Payment Proof">
                                 <Eye size={18} />
                             </a>
                         )}
-                      {b.booking_status === 'completed' && b.payment_status === 'paid' ? (
+                      {/* --- TEMPORARY CHANGE FOR DEMONSTRATION --- */}
+                      {b.booking_status === 'pending' ? (
+                        <div className="flex gap-2">
+                          <button onClick={() => handleDownloadPDF(b)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Download PDF"><Download size={18} /></button>
+                          <button onClick={handlePrint} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Print Receipt"><Printer size={18} /></button>
+                          <button onClick={() => handleCancel(b.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Cancel Booking"><XCircle size={18} /></button>
+                        </div>
+                      ) : b.booking_status === 'completed' && b.payment_status === 'paid' ? (
                         <div className="flex gap-2">
                           <button onClick={() => handleDownloadPDF(b)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Download PDF"><Download size={18} /></button>
                           <button onClick={handlePrint} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Print Receipt"><Printer size={18} /></button>
                         </div>
-                      ) : b.booking_status === 'pending' ? (
-                        <button onClick={() => handleCancel(b.id)} className="bg-red-100 text-red-600 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-red-200 transition-all">
-                          Cancel
-                        </button>
                       ) : (
                         <span className="text-xs text-gray-400 italic">No actions</span>
                       )}

@@ -3,8 +3,7 @@ import { query } from '../database/connection';
 import * as BookingModel from '../models/Booking.model';
 import * as UserModel from '../models/User.model';
 import * as CommissionModel from '../models/Commission.model';
-import * as PaymentModel from '../models/Payment.model';
-import { hashPassword } from '../utils/bcrypt.utils';
+import { hashPassword } from '../utils/bcrypt.utils'; // Correctly import the missing function
 
 export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -129,16 +128,27 @@ export const updateBookingStatus = async (req: Request, res: Response, next: Nex
   }
 };
 
-export const verifyPayment = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    await query('UPDATE payments SET status = \'completed\', verified_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
-    await query('UPDATE bookings SET payment_status = \'paid\' WHERE id = (SELECT booking_id FROM payments WHERE id = ?)', [id]);
-    res.status(200).json({ success: true, message: 'Payment verified' });
+    await BookingModel.deleteBookingById(id);
+    res.status(200).json({ success: true, message: 'Booking deleted successfully' });
   } catch (error) {
     next(error);
   }
 };
+
+export const verifyBookingPayment = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { bookingId } = req.params;
+    await query(`UPDATE payments SET status = 'completed', verified_at = CURRENT_TIMESTAMP WHERE booking_id = ?`, [bookingId]);
+    await query(`UPDATE bookings SET payment_status = 'paid' WHERE id = ?`, [bookingId]);
+    res.status(200).json({ success: true, message: 'Payment verified and booking updated.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 export const getStats = async (req: Request, res: Response, next: NextFunction) => {
   try {

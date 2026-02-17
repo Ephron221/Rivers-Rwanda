@@ -5,7 +5,8 @@ import {
   rejectAgent, 
   getAllBookings, 
   updateBookingStatus, 
-  verifyPayment, 
+  deleteBooking, 
+  verifyBookingPayment, // Corrected import name
   getStats,
   getAllUsers,
   createAdminUser,
@@ -35,6 +36,9 @@ router.patch('/agents/:id/reject', rejectAgent);
 // Booking Management
 router.get('/bookings', getAllBookings);
 router.patch('/bookings/:id/status', updateBookingStatus);
-router.patch('/payments/:id/verify', verifyPayment);
+router.delete('/bookings/:id', deleteBooking);
+
+// --- Corrected Route for Payment Verification ---
+router.patch('/bookings/:bookingId/verify-payment', verifyBookingPayment);
 
 export default router;

@@ -19,6 +19,9 @@ export interface Booking extends RowDataPacket {
   payment_proof_path?: string;
   payment_status?: 'pending' | 'completed' | 'failed' | 'refunded';
   verified_at?: Date;
+  client_name?: string;
+  client_phone?: string;
+  agent_name?: string;
 }
 
 const generateReference = () => {
@@ -70,8 +73,13 @@ export const getAllBookings = async (): Promise<Booking[]> => {
       p.payment_method,
       p.payment_proof_path,
       p.status as payment_status,
-      p.verified_at
+      p.verified_at,
+      CONCAT(c.first_name, ' ', c.last_name) as client_name,
+      c.phone_number as client_phone,
+      CONCAT(a.first_name, ' ', a.last_name) as agent_name
     FROM bookings as b
+    LEFT JOIN clients as c ON b.client_id = c.id
+    LEFT JOIN agents as a ON b.agent_id = a.id
     LEFT JOIN payments as p ON b.id = p.booking_id
     ORDER BY b.created_at DESC
   `;
@@ -82,3 +90,9 @@ export const updateBookingStatus = async (id: string, status: string): Promise<v
   const sql = 'UPDATE bookings SET booking_status = ? WHERE id = ?';
   await query(sql, [status, id]);
 };
+
+export const deleteBookingById = async (id: string): Promise<void> => {
+  const sql = 'DELETE FROM bookings WHERE id = ?';
+  await query(sql, [id]);
+};
+
