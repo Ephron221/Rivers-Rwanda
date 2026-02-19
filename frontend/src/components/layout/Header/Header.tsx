@@ -3,7 +3,6 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Phone, Facebook, Twitter, Linkedin, Instagram, Youtube, Menu, X, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../services/api';
-import logo from '../../../assets/images/logo.png';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -102,7 +101,8 @@ const Header = () => {
       <div className={`transition-all duration-300 ${isScrolled ? 'shadow-lg' : ''}`}>
         <div className="container mx-auto flex justify-between items-center px-4 h-20">
           <Link to="/" className="flex items-center gap-1 group">
-            <img src={logo} alt="Rivers Rwanda Logo" className="h-12" />
+            <span className="text-2xl font-black text-accent-orange tracking-tighter uppercase">Rivers</span>
+            <span className="text-2xl font-black text-white tracking-tighter uppercase">Rwanda</span>
           </Link>
 
           <nav className="hidden lg:block">
@@ -154,7 +154,8 @@ const Header = () => {
             >
                 <div className="flex justify-between items-center h-20 px-4 flex-shrink-0">
                     <Link to="/" className="flex items-center gap-1 group">
-                        <img src={logo} alt="Rivers Rwanda Logo" className="h-12" />
+                        <span className="text-2xl font-black text-accent-orange tracking-tighter uppercase">Rivers</span>
+                        <span className="text-2xl font-black text-white tracking-tighter uppercase">Rwanda</span>
                     </Link>
                     <button onClick={() => setIsMenuOpen(false)} className="p-2 text-white">
                         <X size={28} />
