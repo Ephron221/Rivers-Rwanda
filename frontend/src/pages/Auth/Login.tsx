@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
-import { Mail, Lock, LogIn } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
+import logo from '../../assets/images/logo.png';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -42,11 +43,7 @@ const Login = () => {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-xl">
         <div className="text-center">
-          <div className="flex justify-center">
-            <div className="p-3 bg-primary-dark rounded-xl shadow-lg">
-              <LogIn className="h-8 w-8 text-accent-orange" />
-            </div>
-          </div>
+          <img src={logo} alt="Rivers Rwanda Logo" className="mx-auto h-24 w-auto" />
           <h2 className="mt-6 text-3xl font-extrabold text-primary-dark">
             Login to <span className="text-accent-orange uppercase">Rivers</span> Rwanda
           </h2>

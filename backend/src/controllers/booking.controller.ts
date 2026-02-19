@@ -51,16 +51,16 @@ export const getInvoiceData = async (req: Request, res: Response, next: NextFunc
             return res.status(404).json({ success: false, message: 'Booking not found' });
         }
 
-        const qrCodeData = JSON.stringify({
-            client: `${details.client_first_name} ${details.client_last_name}`,
-            phone: details.client_phone,
-            email: details.client_email,
-            paymentMethod: details.payment_method,
-            bookingDate: details.created_at,
-            bookingRef: details.booking_reference
-        });
+        const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const bookingDetailsUrl = new URL(`${baseUrl}/booking-details`);
+        bookingDetailsUrl.searchParams.append('client', `${details.client_first_name} ${details.client_last_name}`);
+        bookingDetailsUrl.searchParams.append('phone', details.client_phone);
+        bookingDetailsUrl.searchParams.append('email', details.client_email);
+        bookingDetailsUrl.searchParams.append('paymentMethod', details.payment_method);
+        bookingDetailsUrl.searchParams.append('bookingDate', details.created_at.toISOString());
+        bookingDetailsUrl.searchParams.append('bookingRef', details.booking_reference);
 
-        const qrCodeImage = await QRCode.toDataURL(qrCodeData);
+        const qrCodeImage = await QRCode.toDataURL(bookingDetailsUrl.toString());
 
         res.status(200).json({ 
             success: true, 

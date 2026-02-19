@@ -18,6 +18,7 @@ import Register from '../pages/Auth/Register';
 import VerifyEmail from '../pages/Auth/VerifyEmail';
 import ForgotPassword from '../pages/Auth/ForgotPassword';
 import ResetPassword from '../pages/Auth/ResetPassword';
+import BookingDetails from '../pages/BookingDetails';
 
 // Dashboard Pages
 import ClientDashboard from '../pages/ClientDashboard/ClientDashboard';
@@ -82,6 +83,7 @@ const AppContent = () => {
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/booking-details" element={<BookingDetails />} />
 
           {/* Client Routes */}
           <Route path="/client/*" element={

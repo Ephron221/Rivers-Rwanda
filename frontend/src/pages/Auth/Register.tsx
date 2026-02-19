@@ -5,7 +5,8 @@ import * as z from 'zod';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useNavigate, Link } from 'react-router-dom';
-import { UserPlus, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import logo from '../../assets/images/logo.png';
 
 const schema = z.object({
   fullName: z.string().min(3, 'Full name must be at least 3 characters'),
@@ -43,7 +44,7 @@ const Register = () => {
     <div className="min-h-screen bg-light-gray flex items-center justify-center p-4 pt-24">
       <div className="max-w-md w-full bg-white p-8 md:p-12 rounded-3xl shadow-xl border">
         <div className="text-center mb-10">
-          <UserPlus className="mx-auto text-accent-orange" size={40} />
+          <img src={logo} alt="Rivers Rwanda Logo" className="mx-auto h-24 w-auto" />
           <h1 className="text-3xl font-black text-primary-dark uppercase tracking-tighter mt-4">Create Your Account</h1>
           <p className="text-text-light font-medium mt-1">Join the Rivers Rwanda community.</p>
         </div>
