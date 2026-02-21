@@ -101,6 +101,16 @@ export const getAllBookings = async (req: Request, res: Response, next: NextFunc
   }
 };
 
+export const approveBooking = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    await BookingModel.updateBookingStatus(id, 'approved');
+    res.status(200).json({ success: true, message: 'Booking approved successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateBookingStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;

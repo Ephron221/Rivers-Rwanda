@@ -113,7 +113,7 @@ const ClientBookings = () => {
                         </td>
                         <td className="px-8 py-6">
                           <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-2 w-fit ${
-                            b.booking_status === 'completed' ? 'bg-green-100 text-green-700' :
+                            (b.booking_status === 'completed' || b.booking_status === 'confirmed') ? 'bg-green-100 text-green-700' :
                             b.booking_status === 'pending' ? 'bg-orange-100 text-orange-700' :
                             b.booking_status === 'approved' ? 'bg-blue-100 text-blue-700' :
                             b.booking_status === 'cancelled' ? 'bg-red-100 text-red-700' :
@@ -139,7 +139,7 @@ const ClientBookings = () => {
                               {b.payment_proof_path && (
                                   <a href={`http://localhost:5000${b.payment_proof_path}`} target="_blank" rel="noreferrer" className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Payment Proof"><Eye size={18} /></a>
                               )}
-                              {(b.booking_status === 'completed' && b.payment_status === 'paid') && (
+                              {(b.booking_status === 'confirmed' || b.booking_status === 'completed') && b.payment_status === 'paid' && (
                                 <button onClick={() => setSelectedBookingId(b.id)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="View Invoice"><Download size={18} /></button>
                               )}
                               {b.booking_status === 'pending' && (

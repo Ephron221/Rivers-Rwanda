@@ -80,6 +80,11 @@ export const updateAccommodation = async (id: string, data: any): Promise<void> 
   await query(sql, params);
 };
 
+export const updateAccommodationStatus = async (id: string, status: string): Promise<void> => {
+  const sql = 'UPDATE accommodations SET status = ? WHERE id = ?';
+  await query(sql, [status, id]);
+};
+
 export const deleteAccommodation = async (id: string): Promise<void> => {
   const sql = 'DELETE FROM accommodations WHERE id = ?';
   await query(sql, [id]);

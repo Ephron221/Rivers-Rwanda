@@ -26,29 +26,29 @@ const BookingManagement = () => {
     fetchBookings();
   }, []);
 
-  const handleStatusUpdate = async (id: string, status: string) => {
-    try {
-      await api.patch(`/admin/bookings/${id}/status`, { status });
-      toast.success(`Booking has been ${status}.`);
-      fetchBookings();
-    } catch (error) {
-      toast.error('Failed to update status');
+  const handleApprove = async (id: string) => {
+    if (window.confirm('Are you sure you want to approve this booking?')) {
+        try {
+            await api.patch(`/admin/bookings/${id}/approve`);
+            toast.success('Booking approved!');
+            fetchBookings();
+        } catch (error) {
+            toast.error('Failed to approve booking');
+        }
     }
-  };
+  }
 
-  const handleVerifyPayment = async (bookingId: string) => {
-    if (!bookingId) {
-      toast.error('Invalid booking ID.');
-      return;
+  const handleConfirmPayment = async (id: string) => {
+    if (window.confirm('Are you sure you want to confirm this payment? This will update the inventory.')) {
+        try {
+            await api.patch(`/bookings/${id}/confirm-payment`);
+            toast.success('Payment confirmed!');
+            fetchBookings();
+        } catch (error) {
+            toast.error('Failed to confirm payment');
+        }
     }
-    try {
-      await api.patch(`/admin/bookings/${bookingId}/verify-payment`);
-      toast.success('Payment verified');
-      fetchBookings();
-    } catch (error) {
-      toast.error('Failed to verify payment');
-    }
-  };
+  }
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to permanently delete this booking?')) {
@@ -115,7 +115,6 @@ const BookingManagement = () => {
                 <tr>
                   <th className="px-6 py-4">Booking Info</th>
                   <th className="px-6 py-4">Client</th>
-                  <th className="px-6 py-4">Agent</th>
                   <th className="px-6 py-4">Amount</th>
                   <th className="px-6 py-4">Booking Status</th>
                   <th className="px-6 py-4">Payment Status</th>
@@ -133,59 +132,26 @@ const BookingManagement = () => {
                       <p className="font-bold text-primary-dark">{booking.client_name}</p>
                       <p className="text-xs text-text-light mt-1">{booking.client_phone}</p>
                     </td>
-                    <td className="px-6 py-4">
-                      <p className="font-bold text-primary-dark">{booking.agent_name || <span className="text-xs text-gray-400 italic">N/A</span>}</p>
+                    <td className="px-6 py-4 font-bold text-primary-dark">Rwf {booking.total_amount.toLocaleString()}</td>
+                    <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 w-fit ${
+                        booking.booking_status === 'completed' || booking.booking_status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                        booking.booking_status === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600' }`}>{booking.booking_status}</span>
                     </td>
-                    <td className="px-6 py-4 font-bold text-primary-dark">
-                      Rwf {booking.total_amount.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 w-fit ${
-                        booking.booking_status === 'completed' ? 'bg-green-100 text-green-700' :
-                        booking.booking_status === 'pending' ? 'bg-orange-100 text-orange-700' :
-                        booking.booking_status === 'approved' ? 'bg-blue-100 text-blue-700' :
-                        booking.booking_status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>
-                        {booking.booking_status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 w-fit ${
-                        booking.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
-                        booking.payment_status === 'pending' ? 'bg-orange-100 text-orange-700' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>
-                        {booking.payment_status || 'N/A'}
-                      </span>
+                    <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 w-fit ${
+                        booking.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{booking.payment_status || 'N/A'}</span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-center gap-2">
-                          {booking.payment_proof_path && (
-                              <a href={`http://localhost:5000${booking.payment_proof_path}`} target="_blank" rel="noreferrer" className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Payment Proof"><Eye size={18} /></a>
-                          )}
-                          {booking.booking_status === 'pending' && (
-                              <button onClick={() => handleStatusUpdate(booking.id, 'approved')} className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Approve Booking"><Check size={18} /></button>
-                          )}
-                          {booking.booking_status === 'approved' && booking.payment_status === 'pending' && (
-                              <button onClick={() => handleVerifyPayment(booking.id)} className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Confirm Payment"><CreditCard size={18} /></button>
-                          )}
-                           {booking.booking_status === 'approved' && booking.payment_status === 'paid' && (
-                              <button onClick={() => handleStatusUpdate(booking.id, 'completed')} className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Mark as Completed"><CheckCircle size={18} /></button>
-                          )}
-                          {(booking.booking_status === 'completed' && booking.payment_status === 'paid') && (
-                            <button onClick={() => setSelectedBookingId(booking.id)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View Invoice"><Download size={18} /></button>
-                          )}
-                          <button onClick={() => handleDelete(booking.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Booking"><Trash2 size={18} /></button>
+                          {booking.payment_proof_path && <a href={`http://localhost:5000${booking.payment_proof_path}`} target="_blank" rel="noreferrer" className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="View Payment Proof"><Eye size={18} /></a>}
+                          {booking.booking_status === 'pending' && <button onClick={() => handleApprove(booking.id)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Approve Booking"><Check size={18} /></button>}
+                          {booking.booking_status === 'approved' && booking.payment_status === 'pending' && <button onClick={() => handleConfirmPayment(booking.id)} className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg" title="Confirm Payment"><CreditCard size={18} /></button>}
+                          {(booking.booking_status === 'confirmed' || booking.booking_status === 'completed') && booking.payment_status === 'paid' && <button onClick={() => setSelectedBookingId(booking.id)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="View Invoice"><Download size={18} /></button>}
+                          <button onClick={() => handleDelete(booking.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Delete Booking"><Trash2 size={18} /></button>
                       </div>
                     </td>
                   </tr>
                 ))}
-                {bookings.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-20 text-center text-gray-400"><p className="font-bold">No bookings found.</p></td>
-                  </tr>
-                )}
+                {bookings.length === 0 && (<tr><td colSpan={6} className="py-20 text-center text-gray-400"><p className="font-bold">No bookings found.</p></td></tr>)}
               </tbody>
             </table>
           </div>

@@ -17,6 +17,17 @@ export const getBookingsByClientId = async (clientId: string): Promise<Booking[]
   return await query<Booking[]>(sql, [clientId]);
 };
 
+export const getBookingById = async (id: string): Promise<Booking | null> => {
+    const sql = ` SELECT * FROM bookings WHERE id = ? `;
+    const results = await query<Booking[]>(sql, [id]);
+    return results[0] || null;
+};
+
+export const updateBookingPaymentStatus = async (id: string, status: string): Promise<void> => {
+  const sql = 'UPDATE bookings SET payment_status = ? WHERE id = ?';
+  await query(sql, [status, id]);
+};
+
 // --- The rest of the file remains unchanged ---
 
 export const getBookingDetailsForInvoice = async (bookingId: string): Promise<any> => {

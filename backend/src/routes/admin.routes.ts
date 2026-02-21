@@ -4,9 +4,10 @@ import {
   approveAgent, 
   rejectAgent, 
   getAllBookings, 
+  approveBooking, // Import the new function
   updateBookingStatus, 
   deleteBooking, 
-  verifyBookingPayment, // Corrected import name
+  verifyBookingPayment, 
   getStats,
   getAllUsers,
   createAdminUser,
@@ -35,10 +36,11 @@ router.patch('/agents/:id/reject', rejectAgent);
 
 // Booking Management
 router.get('/bookings', getAllBookings);
+router.patch('/bookings/:id/approve', approveBooking); // Add the new route
 router.patch('/bookings/:id/status', updateBookingStatus);
 router.delete('/bookings/:id', deleteBooking);
 
-// --- Corrected Route for Payment Verification ---
+// Corrected Route for Payment Verification
 router.patch('/bookings/:bookingId/verify-payment', verifyBookingPayment);
 
 export default router;

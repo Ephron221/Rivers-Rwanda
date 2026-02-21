@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createBooking, getMyBookings, cancelBooking, getInvoiceData } from '../controllers/booking.controller';
+import { createBooking, getMyBookings, cancelBooking, getInvoiceData, confirmPayment } from '../controllers/booking.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
 import { uploadPaymentProof } from '../middleware/upload.middleware';
 
@@ -19,5 +19,8 @@ router.get('/:id/invoice', getInvoiceData);
 
 // Cancel a booking
 router.patch('/:id/cancel', authorize('client'), cancelBooking);
+
+// Confirm a payment (for admin)
+router.patch('/:id/confirm-payment', authorize('admin'), confirmPayment);
 
 export default router;

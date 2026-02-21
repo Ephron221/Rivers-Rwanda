@@ -88,6 +88,11 @@ export const updateVehicle = async (id: string, data: any): Promise<void> => {
   await query(sql, params);
 };
 
+export const updateVehicleStatus = async (id: string, status: string): Promise<void> => {
+  const sql = 'UPDATE vehicles SET status = ? WHERE id = ?';
+  await query(sql, [status, id]);
+};
+
 export const deleteVehicle = async (id: string): Promise<void> => {
   const sql = 'DELETE FROM vehicles WHERE id = ?';
   await query(sql, [id]);

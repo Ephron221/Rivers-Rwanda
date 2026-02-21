@@ -29,3 +29,8 @@ export const createPayment = async (data: any): Promise<void> => {
     data.payment_proof_path || null
   ]);
 };
+
+export const updatePaymentStatusByBookingId = async (bookingId: string, status: string): Promise<void> => {
+  const sql = 'UPDATE payments SET status = ?, verified_at = CURRENT_TIMESTAMP WHERE booking_id = ?';
+  await query(sql, [status, bookingId]);
+};

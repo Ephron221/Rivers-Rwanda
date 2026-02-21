@@ -46,6 +46,12 @@ export const getAllHouses = async (filters: any): Promise<House[]> => {
     params.push(filters.district);
   }
 
+  if (filters.purpose === 'rent') {
+    sql += ' AND monthly_rent_price IS NOT NULL';
+  } else if (filters.purpose === 'purchase') {
+    sql += ' AND purchase_price IS NOT NULL';
+  }
+
   return await query<House[]>(sql, params);
 };
 
@@ -104,6 +110,11 @@ export const updateHouse = async (id: string, data: any): Promise<void> => {
   params.push(id);
   
   await query(sql, params);
+};
+
+export const updateHouseStatus = async (id: string, status: string): Promise<void> => {
+  const sql = 'UPDATE houses SET status = ? WHERE id = ?';
+  await query(sql, [status, id]);
 };
 
 export const deleteHouse = async (id: string): Promise<void> => {
