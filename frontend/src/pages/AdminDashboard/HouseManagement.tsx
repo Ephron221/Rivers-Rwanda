@@ -3,13 +3,16 @@ import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { Home, Plus, Edit2, Trash2, X, Upload, XCircle } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const SERVER_BASE_URL = API_BASE_URL.split('/api/v1')[0];
+
 const HouseManagement = () => {
   const [houses, setHouses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
-  
+
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
 
@@ -73,7 +76,7 @@ const HouseManagement = () => {
   const removeNewImage = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
-  
+
   const removeExistingImage = (index: number) => {
     setExistingImages(prev => prev.filter((_, i) => i !== index));
   };
@@ -142,7 +145,7 @@ const HouseManagement = () => {
   const renderImagePreviews = () => (
     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mt-4">
       {existingImages.map((img, i) => (
-          <div key={`existing-${i}`} className="relative group aspect-square"><img src={`http://localhost:5000${img}`} className="w-full h-full object-cover rounded-lg border-2"/><button type="button" onClick={() => removeExistingImage(i)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100"><XCircle size={20}/></button></div>
+          <div key={`existing-${i}`} className="relative group aspect-square"><img src={`${SERVER_BASE_URL}${img}`} className="w-full h-full object-cover rounded-lg border-2"/><button type="button" onClick={() => removeExistingImage(i)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100"><XCircle size={20}/></button></div>
       ))}
       {imagePreviews.map((preview, i) => (
           <div key={`new-${i}`} className="relative group aspect-square"><img src={preview} className="w-full h-full object-cover rounded-lg border-2 border-accent-orange"/><button type="button" onClick={() => removeNewImage(i)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100"><XCircle size={20}/></button></div>
@@ -206,7 +209,7 @@ const HouseManagement = () => {
 
       <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
         <div className="overflow-x-auto"><table className="w-full text-left"><thead className="bg-gray-50 text-text-light uppercase text-[10px] font-bold tracking-widest"><tr><th className="px-6 py-4">Preview</th><th className="px-6 py-4">House</th><th className="px-6 py-4">Location</th><th className="px-6 py-4">Price</th><th className="px-6 py-4">Status</th><th className="px-6 py-4 text-center">Actions</th></tr></thead>
-            <tbody className="divide-y divide-gray-100">{houses.map((h) => { const placeholder = 'https://via.placeholder.com/150x100?text=No+Image'; let imageUrl = placeholder; if (h.images) { try { const parsed = JSON.parse(h.images); if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]) { imageUrl = `http://localhost:5000${parsed[0]}`; } } catch (e) { } } const price = h.monthly_rent_price || h.purchase_price; return (<tr key={h.id} className="hover:bg-gray-50/50"><td className="px-6 py-4"><div className="w-20 h-12 rounded-lg overflow-hidden border shadow-sm"><img src={imageUrl} alt={h.title} className="w-full h-full object-cover" /></div></td><td className="px-6 py-4"><p className="font-bold text-primary-dark">{h.title}</p><p className="text-xs text-text-light">{h.bedrooms} beds, {h.bathrooms} baths</p></td><td className="px-6 py-4 capitalize font-medium text-xs">{h.district}, {h.province}</td><td className="px-6 py-4 font-bold text-primary-dark whitespace-nowrap text-sm">{price ? `Rwf ${Number(price).toLocaleString()}` : 'N/A'} {h.monthly_rent_price && '/ month'}</td><td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${h.status === 'available' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}>{h.status}</span></td><td className="px-6 py-4"><div className="flex justify-center gap-2"><button onClick={() => handleEdit(h)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit2 size={18} /></button><button onClick={() => handleDelete(h.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={18} /></button></div></td></tr>);})}</tbody></table></div>
+            <tbody className="divide-y divide-gray-100">{houses.map((h) => { const placeholder = 'https://via.placeholder.com/150x100?text=No+Image'; let imageUrl = placeholder; if (h.images) { try { const parsed = JSON.parse(h.images); if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]) { imageUrl = `${SERVER_BASE_URL}${parsed[0]}`; } } catch (e) { } } const price = h.monthly_rent_price || h.purchase_price; return (<tr key={h.id} className="hover:bg-gray-50/50"><td className="px-6 py-4"><div className="w-20 h-12 rounded-lg overflow-hidden border shadow-sm"><img src={imageUrl} alt={h.title} className="w-full h-full object-cover" /></div></td><td className="px-6 py-4"><p className="font-bold text-primary-dark">{h.title}</p><p className="text-xs text-text-light">{h.bedrooms} beds, {h.bathrooms} baths</p></td><td className="px-6 py-4 capitalize font-medium text-xs">{h.district}, {h.province}</td><td className="px-6 py-4 font-bold text-primary-dark whitespace-nowrap text-sm">{price ? `Rwf ${Number(price).toLocaleString()}` : 'N/A'} {h.monthly_rent_price && '/ month'}</td><td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${h.status === 'available' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}>{h.status}</span></td><td className="px-6 py-4"><div className="flex justify-center gap-2"><button onClick={() => handleEdit(h)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit2 size={18} /></button><button onClick={() => handleDelete(h.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={18} /></button></div></td></tr>);})}</tbody></table></div>
       </div>
     </div>
   );

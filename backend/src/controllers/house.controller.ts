@@ -1,45 +1,40 @@
 import { Request, Response, NextFunction } from 'express';
 import * as HouseModel from '../models/House.model';
+import path from 'path';
 
 const processRequestData = (body: any, files: any) => {
-  const data = { ...body };
+    const data = { ...body };
 
-  // Sanitize boolean-like strings to 1 or 0 for the database
-  data.has_parking = ['true', true, 1].includes(data.has_parking) ? 1 : 0;
-  data.has_garden = ['true', true, 1].includes(data.has_garden) ? 1 : 0;
-  data.has_wifi = ['true', true, 1].includes(data.has_wifi) ? 1 : 0;
-  data.featured = ['true', true, 1].includes(data.featured) ? 1 : 0;
-
-  // Sanitize number and price fields
-  data.total_rooms = parseInt(data.total_rooms || '0', 10);
-  data.bedrooms = parseInt(data.bedrooms || '0', 10);
-  data.bathrooms = parseInt(data.bathrooms || '0', 10);
-  data.monthly_rent_price = parseFloat(data.monthly_rent_price || '0');
-  data.purchase_price = parseFloat(data.purchase_price || '0');
-  if (!body.monthly_rent_price || body.monthly_rent_price === '0') data.monthly_rent_price = null;
-  if (!body.purchase_price || body.purchase_price === '0') data.purchase_price = null;
-
-  // --- THE DEFINITIVE, CORRECT FIX FOR IMAGE PATHS ---
-  if (files && Array.isArray(files) && files.length > 0) {
-    const imagePaths = files.map((file: any) => {
-      // file.path is an absolute path like: "D:\\Rivers-Rwanda\\backend\\uploads\\houses\\image.png"
-      // We need to transform it into a web-accessible URL path like: "/uploads/houses/image.png"
-      const fullPath = file.path;
-      const uploadsDir = 'uploads';
-      const uploadsIndex = fullPath.indexOf(uploadsDir);
-      
-      // Take the substring from 'uploads' to the end, and normalize slashes for the URL
-      const relativePath = fullPath.substring(uploadsIndex);
-      return '/' + relativePath.replace(/\\/g, '/');
+    // Sanitize boolean fields, ensuring they are always 1 or 0
+    const booleanFields = ['has_parking', 'has_garden', 'has_wifi'];
+    booleanFields.forEach(field => {
+        data[field] = ['true', true, 1, 'on'].includes(data[field]) ? 1 : 0;
     });
-    data.images = JSON.stringify(imagePaths);
-  } else if (body.images) {
-    data.images = body.images;
-  } else {
-    data.images = JSON.stringify([]);
-  }
 
-  return data;
+    // Sanitize number and price fields, ensuring they are numbers or null
+    const numericFields = ['total_rooms', 'bedrooms', 'bathrooms'];
+    numericFields.forEach(field => {
+        data[field] = parseInt(data[field] || '0', 10);
+    });
+
+    // ** THE FIX for the error **
+    // Convert empty, zero, or invalid numbers for prices to null for the database
+    data.monthly_rent_price = parseFloat(data.monthly_rent_price) > 0 ? parseFloat(data.monthly_rent_price) : null;
+    data.purchase_price = parseFloat(data.purchase_price) > 0 ? parseFloat(data.purchase_price) : null;
+
+    // Handle images
+    if (files && Array.isArray(files) && files.length > 0) {
+        const imagePaths = files.map((file: any) => {
+            const relativePath = path.relative(path.join(__dirname, '../../'), file.path);
+            return '/' + relativePath.replace(/\\/g, '/');
+        });
+        data.images = JSON.stringify(imagePaths);
+    } else if (body.images) {
+        // This handles re-saving existing images during an update
+        data.images = body.images;
+    }
+
+    return data;
 };
 
 export const getHouses = async (req: Request, res: Response, next: NextFunction) => {
