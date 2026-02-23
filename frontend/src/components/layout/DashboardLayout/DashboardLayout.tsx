@@ -13,13 +13,14 @@ import {
   Banknote,
   Menu,
   X,
-  Globe
+  Globe,
+  Package
 } from 'lucide-react';
 import Footer from '../Footer/Footer'; // Import the main footer
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  role: 'client' | 'agent' | 'admin';
+  role: 'client' | 'agent' | 'admin' | 'seller';
 }
 
 const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
@@ -45,14 +46,18 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
       { label: 'Earnings', path: '/agent/earnings', icon: <Banknote size={20} /> },
       { label: 'Profile', path: '/agent/profile', icon: <User size={20} /> },
     ],
+    seller: [
+      { label: 'Dashboard', path: '/seller/dashboard', icon: <LayoutDashboard size={20} /> },
+      { label: 'My Products', path: '/seller/products', icon: <Package size={20} /> },
+      { label: 'Profile', path: '/seller/profile', icon: <User size={20} /> },
+    ],
     admin: [
       { label: 'Overview', path: '/admin/dashboard', icon: <LayoutDashboard size={20} /> },
       { label: 'Users', path: '/admin/users', icon: <UsersIcon size={20} /> },
-      { label: 'Accommodations', path: '/admin/accommodations', icon: <Home size={20} /> },
-      { label: 'Vehicles', path: '/admin/vehicles', icon: <Car size={20} /> },
-      { label: 'Houses', path: '/admin/houses', icon: <Home size={20} /> },
+      { label: 'Sellers', path: '/admin/sellers', icon: <ShieldCheck size={20} /> },
+      { label: 'Products', path: '/admin/products', icon: <Package size={20} /> },
+      { label: 'Commissions', path: '/admin/commissions', icon: <Banknote size={20} /> },
       { label: 'Bookings', path: '/admin/bookings', icon: <BookOpen size={20} /> },
-      { label: 'Agents', path: '/admin/agents', icon: <ShieldCheck size={20} /> },
       { label: 'Inquiries', path: '/admin/inquiries', icon: <MessageSquare size={20} /> },
       { label: 'Profile', path: '/admin/profile', icon: <User size={20} /> },
     ],
@@ -72,7 +77,7 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
               <Link 
                 to={item.path} 
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${                  location.pathname === item.path 
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${                  location.pathname.startsWith(item.path) 
                     ? 'bg-accent-orange text-white shadow-lg' 
                     : 'hover:bg-white/10 text-gray-300 hover:text-white'
                 }`}

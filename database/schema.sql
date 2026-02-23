@@ -4,12 +4,12 @@
 CREATE DATABASE IF NOT EXISTS rivers_rwanda CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE rivers_rwanda;
 
--- 1. USERS TABLE
+-- 1. USERS TABLE (Corrected Role ENUM)
 CREATE TABLE users (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    role ENUM('client', 'agent', 'admin') NOT NULL,
+    role ENUM('client', 'agent', 'seller', 'admin') NOT NULL,
     status ENUM('active', 'pending', 'suspended', 'deleted') DEFAULT 'pending',
     email_verified BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -54,7 +54,7 @@ CREATE TABLE agents (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     phone_number VARCHAR(20) UNIQUE NOT NULL,
-    national_id VARCHAR(16) UNIQUE, -- Added for Agent Verification
+    national_id VARCHAR(16) UNIQUE,
     profile_image VARCHAR(255),
     business_name VARCHAR(255),
     status ENUM('pending', 'approved', 'rejected', 'suspended') DEFAULT 'pending',
@@ -65,11 +65,30 @@ CREATE TABLE agents (
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB;
 
--- ... (rest of the tables: accommodations, vehicles, houses, bookings, etc. remain unchanged) ...
+-- 5. SELLERS TABLE
+CREATE TABLE sellers (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36) UNIQUE NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    phone_number VARCHAR(20) UNIQUE NOT NULL,
+    national_id VARCHAR(16) UNIQUE NOT NULL,
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    profile_image VARCHAR(255),
+    business_name VARCHAR(255),
+    agreed_to_commission BOOLEAN DEFAULT FALSE,
+    bank_account_details JSON,
+    mobile_money_details JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id)
+) ENGINE=InnoDB;
 
--- 5. ACCOMMODATIONS TABLE
+-- 6. ACCOMMODATIONS TABLE
 CREATE TABLE accommodations (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    seller_id CHAR(36) NOT NULL,
     type ENUM('apartment', 'hotel_room', 'event_hall') NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -85,18 +104,20 @@ CREATE TABLE accommodations (
     capacity INT, -- for event halls
     amenities JSON,
     images JSON,
-    status ENUM('available', 'unavailable', 'maintenance') DEFAULT 'available',
+    status ENUM('pending_approval', 'available', 'unavailable', 'maintenance', 'rejected') DEFAULT 'pending_approval',
     featured BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (seller_id) REFERENCES sellers(id) ON DELETE CASCADE,
     INDEX idx_type (type),
     INDEX idx_status (status),
     INDEX idx_city (city)
 ) ENGINE=InnoDB;
 
--- 6. VEHICLES TABLE
+-- 7. VEHICLES TABLE
 CREATE TABLE vehicles (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    seller_id CHAR(36) NOT NULL,
     purpose ENUM('rent', 'buy', 'both') NOT NULL,
     make VARCHAR(100) NOT NULL,
     model VARCHAR(100) NOT NULL,
@@ -110,18 +131,20 @@ CREATE TABLE vehicles (
     currency ENUM('RWF', 'USD') DEFAULT 'USD',
     features JSON,
     images JSON,
-    status ENUM('available', 'rented', 'sold', 'maintenance') DEFAULT 'available',
+    status ENUM('pending_approval', 'available', 'rented', 'sold', 'maintenance', 'rejected') DEFAULT 'pending_approval',
     featured BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (seller_id) REFERENCES sellers(id) ON DELETE CASCADE,
     INDEX idx_purpose (purpose),
     INDEX idx_status (status),
     INDEX idx_make_model (make, model)
 ) ENGINE=InnoDB;
 
--- 7. HOUSES TABLE
+-- 8. HOUSES TABLE
 CREATE TABLE houses (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    seller_id CHAR(36) NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     size VARCHAR(100),
@@ -145,25 +168,26 @@ CREATE TABLE houses (
     monthly_rent_price DECIMAL(10,2),
     purchase_price DECIMAL(10,2),
     currency ENUM('RWF', 'USD') DEFAULT 'RWF',
-    status ENUM('available', 'under maintenance', 'rented', 'purchased') DEFAULT 'available',
-    contact_info JSON,
+    status ENUM('pending_approval', 'available', 'under maintenance', 'rented', 'purchased', 'rejected') DEFAULT 'pending_approval',
     featured BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (seller_id) REFERENCES sellers(id) ON DELETE CASCADE,
     INDEX idx_status (status),
     INDEX idx_province_district (province, district)
 ) ENGINE=InnoDB;
 
--- 8. BOOKINGS TABLE
+-- 9. BOOKINGS TABLE
 CREATE TABLE bookings (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     booking_type ENUM('accommodation', 'vehicle_rent', 'vehicle_purchase', 'house_rent', 'house_purchase') NOT NULL,
     booking_reference VARCHAR(20) UNIQUE NOT NULL,
     client_id CHAR(36) NOT NULL,
-    agent_id CHAR(36),
-    accommodation_id CHAR(36),
-    vehicle_id CHAR(36),
-    house_id CHAR(36),
+    seller_id CHAR(36) NULL, -- Can be null if booked via agent
+    agent_id CHAR(36) NULL, -- Can be null if booked directly
+    accommodation_id CHAR(36) NULL,
+    vehicle_id CHAR(36) NULL,
+    house_id CHAR(36) NULL,
     start_date DATE,
     end_date DATE,
     total_amount DECIMAL(10,2) NOT NULL,
@@ -172,17 +196,19 @@ CREATE TABLE bookings (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (client_id) REFERENCES clients(id),
+    FOREIGN KEY (seller_id) REFERENCES sellers(id),
     FOREIGN KEY (agent_id) REFERENCES agents(id),
     FOREIGN KEY (accommodation_id) REFERENCES accommodations(id),
     FOREIGN KEY (vehicle_id) REFERENCES vehicles(id),
     FOREIGN KEY (house_id) REFERENCES houses(id),
     INDEX idx_client (client_id),
+    INDEX idx_seller (seller_id),
     INDEX idx_agent (agent_id),
     INDEX idx_status (booking_status),
     INDEX idx_reference (booking_reference)
 ) ENGINE=InnoDB;
 
--- 9. PAYMENTS TABLE
+-- 10. PAYMENTS TABLE
 CREATE TABLE payments (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     booking_id CHAR(36) NOT NULL,
@@ -198,7 +224,7 @@ CREATE TABLE payments (
     INDEX idx_status (status)
 ) ENGINE=InnoDB;
 
--- 10. COMMISSIONS TABLE
+-- 11. COMMISSIONS TABLE (For Agents)
 CREATE TABLE commissions (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     agent_id CHAR(36) NOT NULL,
@@ -213,7 +239,7 @@ CREATE TABLE commissions (
     INDEX idx_status (status)
 ) ENGINE=InnoDB;
 
--- 11. CONTACT_INQUIRIES TABLE
+-- 12. CONTACT_INQUIRIES TABLE
 CREATE TABLE contact_inquiries (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     full_name VARCHAR(255) NOT NULL,
@@ -226,7 +252,7 @@ CREATE TABLE contact_inquiries (
     INDEX idx_status (status)
 ) ENGINE=InnoDB;
 
--- 12. REVIEWS TABLE
+-- 13. REVIEWS TABLE
 CREATE TABLE reviews (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     client_id CHAR(36) NOT NULL,
@@ -243,7 +269,7 @@ CREATE TABLE reviews (
     FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- 13. SYSTEM_SETTINGS TABLE
+-- 14. SYSTEM_SETTINGS TABLE
 CREATE TABLE system_settings (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     setting_key VARCHAR(100) UNIQUE NOT NULL,
@@ -252,7 +278,7 @@ CREATE TABLE system_settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- 14. ADMIN_PROFILES TABLE
+-- 15. ADMIN_PROFILES TABLE
 CREATE TABLE admin_profiles (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     user_id CHAR(36) UNIQUE NOT NULL,

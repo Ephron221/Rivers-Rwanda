@@ -13,10 +13,10 @@ const schema = z.object({
   email: z.string().email('Invalid email address'),
   phone: z.string().min(10, 'Please enter a valid phone number'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  role: z.enum(['client', 'agent']),
+  role: z.enum(['client', 'agent', 'seller']),
   nationalId: z.string().optional(),
-}).refine(data => data.role === 'agent' ? !!data.nationalId && data.nationalId.length >= 16 : true, {
-  message: "A 16-digit National ID is required for agents",
+}).refine(data => (data.role === 'agent' || data.role === 'seller') ? !!data.nationalId && data.nationalId.length >= 16 : true, {
+  message: "A 16-digit National ID is required for agents and sellers",
   path: ["nationalId"],
 });
 
@@ -29,10 +29,24 @@ const Register = () => {
   const onSubmit = async (data: any) => {
     setLoading(true);
     try {
-      const response = await api.post('/auth/register', data);
-      toast.success(response.data.message);
-      // Redirect to the new OTP verification page
-      navigate(`/verify-email?userId=${response.data.data.userId}`);
+      if (data.role === 'seller') {
+        const [firstName, ...lastName] = data.fullName.split(' ');
+        const sellerData = {
+            firstName,
+            lastName: lastName.join(' '),
+            email: data.email,
+            phoneNumber: data.phone,
+            nationalId: data.nationalId,
+            password: data.password
+        }
+        const response = await api.post('/sellers/register', sellerData);
+        toast.success(response.data.message);
+        navigate(`/verify-otp?email=${data.email}`);
+      } else {
+        const response = await api.post('/auth/register', data);
+        toast.success(response.data.message);
+        navigate(`/verify-email?userId=${response.data.data.userId}`);
+      }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Registration failed');
     } finally {
@@ -42,7 +56,7 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-light-gray flex items-center justify-center p-4 pt-24">
-      <div className="max-w-md w-full bg-white p-8 md:p-12 rounded-3xl shadow-xl border">
+      <div className="max-w-xl w-full bg-white p-8 md:p-12 rounded-3xl shadow-xl border">
         <div className="text-center mb-10">
           <img src={logo} alt="Rivers Rwanda Logo" className="mx-auto h-24 w-auto" />
           <h1 className="text-3xl font-black text-primary-dark uppercase tracking-tighter mt-4">Create Your Account</h1>
@@ -52,14 +66,18 @@ const Register = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-2">
             <label className="text-xs font-bold text-gray-500 uppercase">Register As</label>
-            <div className="flex gap-4">
-                <label className="flex-1 p-4 border-2 rounded-xl cursor-pointer transition-all ${role === 'client' ? 'border-accent-orange bg-orange-50' : 'border-gray-200'}">
+            <div className="grid grid-cols-3 gap-4">
+                <label className={`p-4 border-2 rounded-xl cursor-pointer transition-all text-center ${role === 'client' ? 'border-accent-orange bg-orange-50' : 'border-gray-200'}`}>
                     <input type="radio" {...register('role')} value="client" className="hidden" />
                     <span className="font-bold text-primary-dark">Client</span>
                 </label>
-                <label className="flex-1 p-4 border-2 rounded-xl cursor-pointer transition-all ${role === 'agent' ? 'border-accent-orange bg-orange-50' : 'border-gray-200'}">
+                <label className={`p-4 border-2 rounded-xl cursor-pointer transition-all text-center ${role === 'agent' ? 'border-accent-orange bg-orange-50' : 'border-gray-200'}`}>
                     <input type="radio" {...register('role')} value="agent" className="hidden" />
                     <span className="font-bold text-primary-dark">Agent</span>
+                </label>
+                <label className={`p-4 border-2 rounded-xl cursor-pointer transition-all text-center ${role === 'seller' ? 'border-accent-orange bg-orange-50' : 'border-gray-200'}`}>
+                    <input type="radio" {...register('role')} value="seller" className="hidden" />
+                    <span className="font-bold text-primary-dark">Seller</span>
                 </label>
             </div>
           </div>
@@ -69,7 +87,7 @@ const Register = () => {
             {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName.message as string}</p>}
           </div>
 
-          {role === 'agent' && (
+          {(role === 'agent' || role === 'seller') && (
             <div>
                 <input {...register('nationalId')} placeholder="National ID (16 digits)" className="w-full p-4 border-2 rounded-xl outline-none" />
                 {errors.nationalId && <p className="text-red-500 text-xs mt-1">{errors.nationalId.message as string}</p>}

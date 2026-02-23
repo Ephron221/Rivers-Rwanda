@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { Share2, Heart, ArrowLeft } from 'lucide-react';
-import BookingForm from '../../components/forms/BookingForm';
+import { Share2, Heart, ArrowLeft, ShieldCheck } from 'lucide-react';
 import ImageGallery from '../../components/common/ImageGallery';
 
 const AccommodationDetailPage = () => {
@@ -13,7 +12,7 @@ const AccommodationDetailPage = () => {
   const [item, setItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
-  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -30,17 +29,39 @@ const AccommodationDetailPage = () => {
     window.scrollTo(0, 0);
   }, [id]);
 
+  const handlePayment = async () => {
+    setIsProcessingPayment(true);
+    try {
+      // First, create a booking to link the payment to
+      const bookingResponse = await api.post('/bookings', {
+        item_id: id,
+        item_type: 'accommodation',
+        start_date: new Date().toISOString().split('T')[0], // Placeholder, adjust as needed
+        end_date: new Date().toISOString().split('T')[0], // Placeholder, adjust as needed
+      });
+
+      const { bookingId } = bookingResponse.data.data;
+
+      // Second, initiate the payment for that booking
+      const paymentResponse = await api.post('/payments', { bookingId });
+
+      // Redirect to a dedicated payment page or show a modal
+      toast.success('Redirecting to payment confirmation...');
+      navigate(`/payment/confirm?paymentId=${paymentResponse.data.data.paymentId}&transactionRef=${paymentResponse.data.data.transactionReference}`);
+
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to start payment process.');
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
   const parseImages = (imagesData: any) => {
     if (!imagesData) return [];
     try {
       const parsed = typeof imagesData === 'string' ? JSON.parse(imagesData) : imagesData;
       return Array.isArray(parsed) ? parsed : [];
     } catch (e) { return []; }
-  };
-
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast.success('Link copied to clipboard!');
   };
 
   if (loading) return (
@@ -56,6 +77,7 @@ const AccommodationDetailPage = () => {
   if (!item) return <div className="container mx-auto py-20 text-center text-primary-dark font-bold tracking-tighter uppercase">Accommodation not found</div>;
 
   const images = parseImages(item.images);
+  const price = item.price_per_night || item.price_per_event;
 
   return (
     <div className="bg-[#f8f9fa] min-h-screen pb-20 pt-24 md:pt-32">
@@ -68,10 +90,7 @@ const AccommodationDetailPage = () => {
           >
             <ArrowLeft size={14} strokeWidth={3} /> Back
           </button>
-          <div className="flex gap-3">
-            <button onClick={handleShare} className="p-3 bg-white rounded-full text-text-light hover:text-accent-orange transition-all shadow-sm border border-gray-100"><Share2 size={18} /></button>
-            <button onClick={() => setIsSaved(!isSaved)} className={`p-3 bg-white rounded-full transition-all shadow-sm border border-gray-100 ${isSaved ? 'text-red-500' : 'text-text-light hover:text-red-500'}`}><Heart size={18} fill={isSaved ? "currentColor" : "none"} /></button>
-          </div>
+          {/* Share/Save buttons can be added here */}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -82,19 +101,27 @@ const AccommodationDetailPage = () => {
             className="lg:col-span-7 space-y-8"
           >
             <ImageGallery images={images} />
+            <div className="bg-white p-8 rounded-2xl shadow-sm border">
+              <h2 className="font-bold text-2xl mb-4">{item.name}</h2>
+              <p className="text-gray-600">{item.description}</p>
+            </div>
           </motion.div>
 
-          {/* Right Side: Booking Form */}
+          {/* Right Side: Payment Button */}
           <div className="lg:col-span-5">
-            <div className="sticky top-32 bg-primary-dark text-white rounded-[3.5rem] shadow-2xl p-8 md:p-12 relative overflow-hidden">
-                <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 relative z-10 text-center">Secure This <span className="text-accent-orange">Property</span></h3>
-                {!showBookingForm ? (
-                  <div className="text-center">
-                    <button onClick={() => setShowBookingForm(true)} className="w-full bg-accent-orange text-white font-black py-5 rounded-2xl uppercase tracking-[0.2em] text-xs hover:bg-white hover:text-primary-dark transition-all duration-500 shadow-xl relative z-10">Request Booking</button>
-                  </div>
-                ) : (
-                  <BookingForm item={item} itemType="accommodation" />
-                )}
+            <div className="sticky top-32 bg-primary-dark text-white rounded-[3.5rem] shadow-2xl p-8 md:p-12">
+              <div className="text-center">
+                <p className="text-sm text-gray-300">Price</p>
+                <p className="text-4xl font-bold text-accent-orange">${price}<span className="text-lg">/{item.price_per_night ? 'night' : 'event'}</span></p>
+                <button 
+                  onClick={handlePayment}
+                  disabled={isProcessingPayment}
+                  className="w-full mt-8 bg-accent-orange text-white font-black py-5 rounded-2xl uppercase tracking-[0.2em] text-xs hover:bg-white hover:text-primary-dark transition-all duration-500 shadow-xl disabled:opacity-50"
+                >
+                  {isProcessingPayment ? 'Processing...' : 'Rent Now'}
+                </button>
+                <p className="flex items-center justify-center gap-2 text-xs text-gray-400 mt-4"><ShieldCheck size={14}/> Secure Payment via System</p>
+              </div>
             </div>
           </div>
         </div>

@@ -1,28 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
 import * as HouseModel from '../models/House.model';
+import * as UserModel from '../models/User.model';
+import * as SellerModel from '../models/Seller.model';
 import path from 'path';
 
 const processRequestData = (body: any, files: any) => {
     const data = { ...body };
 
-    // Sanitize boolean fields, ensuring they are always 1 or 0
     const booleanFields = ['has_parking', 'has_garden', 'has_wifi'];
     booleanFields.forEach(field => {
         data[field] = ['true', true, 1, 'on'].includes(data[field]) ? 1 : 0;
     });
 
-    // Sanitize number and price fields, ensuring they are numbers or null
     const numericFields = ['total_rooms', 'bedrooms', 'bathrooms'];
     numericFields.forEach(field => {
         data[field] = parseInt(data[field] || '0', 10);
     });
 
-    // ** THE FIX for the error **
-    // Convert empty, zero, or invalid numbers for prices to null for the database
     data.monthly_rent_price = parseFloat(data.monthly_rent_price) > 0 ? parseFloat(data.monthly_rent_price) : null;
     data.purchase_price = parseFloat(data.purchase_price) > 0 ? parseFloat(data.purchase_price) : null;
 
-    // Handle images
     if (files && Array.isArray(files) && files.length > 0) {
         const imagePaths = files.map((file: any) => {
             const relativePath = path.relative(path.join(__dirname, '../../'), file.path);
@@ -30,7 +27,6 @@ const processRequestData = (body: any, files: any) => {
         });
         data.images = JSON.stringify(imagePaths);
     } else if (body.images) {
-        // This handles re-saving existing images during an update
         data.images = body.images;
     }
 
@@ -61,9 +57,39 @@ export const getHouse = async (req: Request, res: Response, next: NextFunction) 
 
 export const createHouse = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const userId = (req as any).user.userId;
+    if (!userId) {
+        return res.status(401).json({ success: false, message: 'Authentication error.' });
+    }
+
+    const sellerId = await UserModel.getSellerIdByUserId(userId);
+    if (!sellerId) {
+        return res.status(403).json({ success: false, message: 'User is not a valid seller.' });
+    }
+    
+    const seller = await SellerModel.findSellerById(sellerId);
+    if (!seller) {
+        return res.status(404).json({ success: false, message: 'Seller profile not found.' });
+    }
+
+    if (seller.status !== 'approved') {
+        return res.status(403).json({ success: false, message: 'Your seller account has not been approved.' });
+    }
+
+    const { agreed_to_commission } = req.body;
+    if (!seller.agreed_to_commission && agreed_to_commission !== 'true') {
+        return res.status(403).json({ success: false, message: 'You must agree to the commission terms to create a listing.' });
+    }
+
+    if (!seller.agreed_to_commission && agreed_to_commission === 'true') {
+        await SellerModel.updateSeller(sellerId, { agreed_to_commission: true } as Partial<SellerModel.Seller>);
+    }
+
     const sanitizedData = processRequestData(req.body, req.files);
+    sanitizedData.seller_id = sellerId;
+
     const houseId = await HouseModel.createHouse(sanitizedData);
-    res.status(201).json({ success: true, id: houseId });
+    res.status(201).json({ success: true, message: 'House created successfully and is pending approval.', id: houseId });
   } catch (error) {
     next(error);
   }

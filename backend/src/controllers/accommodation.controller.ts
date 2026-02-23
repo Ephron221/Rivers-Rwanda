@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import * as AccommodationModel from '../models/Accommodation.model';
+import * as UserModel from '../models/User.model';
+import * as SellerModel from '../models/Seller.model';
 import fs from 'fs';
 import path from 'path';
 
@@ -27,6 +29,35 @@ export const getAccommodation = async (req: Request, res: Response, next: NextFu
 
 export const createAccommodation = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const userId = (req as any).user.userId;
+    if (!userId) {
+        return res.status(401).json({ success: false, message: 'Authentication error.' });
+    }
+
+    const sellerId = await UserModel.getSellerIdByUserId(userId);
+    if (!sellerId) {
+        return res.status(403).json({ success: false, message: 'User is not a valid seller.' });
+    }
+
+    const seller = await SellerModel.findSellerById(sellerId);
+    if (!seller) {
+        return res.status(404).json({ success: false, message: 'Seller profile not found.' });
+    }
+
+    if (seller.status !== 'approved') {
+        return res.status(403).json({ success: false, message: 'Your seller account has not been approved.' });
+    }
+
+    const { agreed_to_commission } = req.body;
+    if (!seller.agreed_to_commission && agreed_to_commission !== 'true') {
+        return res.status(403).json({ success: false, message: 'You must agree to the commission terms to create a listing.' });
+    }
+
+    // Update the seller's commission agreement status if they just agreed
+    if (!seller.agreed_to_commission && agreed_to_commission === 'true') {
+        await SellerModel.updateSeller(sellerId, { agreed_to_commission: true } as Partial<SellerModel.Seller>);
+    }
+
     const imagePaths: string[] = [];
     if (req.files) {
       const files = req.files as Express.Multer.File[];
@@ -38,11 +69,12 @@ export const createAccommodation = async (req: Request, res: Response, next: Nex
 
     const data = {
       ...req.body,
+      seller_id: sellerId,
       images: JSON.stringify(imagePaths)
     };
 
     const newId = await AccommodationModel.createAccommodation(data);
-    res.status(201).json({ success: true, message: 'Accommodation created', data: { id: newId } });
+    res.status(201).json({ success: true, message: 'Accommodation created and is pending approval.', data: { id: newId } });
   } catch (error) {
     next(error);
   }

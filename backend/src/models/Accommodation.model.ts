@@ -16,7 +16,7 @@ export interface Accommodation extends RowDataPacket {
 }
 
 export const getAllAccommodations = async (filters: any): Promise<Accommodation[]> => {
-  let sql = 'SELECT * FROM accommodations WHERE 1=1';
+  let sql = 'SELECT * FROM accommodations WHERE status = \'available\'';
   const params: any[] = [];
 
   if (filters.type) {
@@ -29,26 +29,22 @@ export const getAllAccommodations = async (filters: any): Promise<Accommodation[
     params.push(filters.city);
   }
 
-  if (filters.status) {
-    sql += ' AND status = ?';
-    params.push(filters.status);
-  }
-
   return await query<Accommodation[]>(sql, params);
 };
 
 export const getAccommodationById = async (id: string): Promise<Accommodation | null> => {
-  const sql = 'SELECT * FROM accommodations WHERE id = ?';
+  const sql = 'SELECT * FROM accommodations WHERE id = ? AND status = \'available\'';
   const results = await query<Accommodation[]>(sql, [id]);
   return results[0] || null;
 };
 
 export const createAccommodation = async (data: Partial<Accommodation>): Promise<string> => {
   const sql = `
-    INSERT INTO accommodations (id, type, name, description, city, district, price_per_night, price_per_event, status, images)
-    VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO accommodations (id, seller_id, type, name, description, city, district, price_per_night, price_per_event, status, images)
+    VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   await query(sql, [
+    (data as any).seller_id,
     data.type,
     data.name,
     data.description,
@@ -56,7 +52,7 @@ export const createAccommodation = async (data: Partial<Accommodation>): Promise
     data.district,
     data.price_per_night || null,
     data.price_per_event || null,
-    data.status || 'available',
+    'pending_approval',
     data.images || JSON.stringify([])
   ]);
   

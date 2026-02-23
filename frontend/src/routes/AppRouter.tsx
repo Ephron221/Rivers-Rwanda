@@ -16,14 +16,17 @@ import Contact from '../pages/Contact/Contact';
 import Login from '../pages/Auth/Login';
 import Register from '../pages/Auth/Register';
 import VerifyEmail from '../pages/Auth/VerifyEmail';
+import VerifyOtp from '../pages/Auth/VerifyOtp';
 import ForgotPassword from '../pages/Auth/ForgotPassword';
 import ResetPassword from '../pages/Auth/ResetPassword';
 import BookingDetails from '../pages/BookingDetails';
+import PaymentConfirmation from '../pages/Payment/PaymentConfirmation';
 
 // Dashboard Pages
 import ClientDashboard from '../pages/ClientDashboard/ClientDashboard';
 import AgentDashboard from '../pages/AgentDashboard/AgentDashboard';
 import AdminDashboard from '../pages/AdminDashboard/AdminDashboard';
+import SellerDashboard from '../pages/Seller/SellerDashboard';
 
 // Admin Management
 import UserManagement from '../pages/AdminDashboard/UserManagement';
@@ -33,6 +36,10 @@ import HouseManagement from '../pages/AdminDashboard/HouseManagement';
 import BookingManagement from '../pages/AdminDashboard/BookingManagement';
 import AgentManagement from '../pages/AdminDashboard/AgentManagement';
 import InquiryManagement from '../pages/AdminDashboard/InquiryManagement';
+import SellerManagement from '../pages/AdminDashboard/SellerManagement';
+import AdminProductManagement from '../pages/AdminDashboard/ProductManagement';
+import CommissionManagement from '../pages/AdminDashboard/CommissionManagement';
+
 
 // Agent Pages
 import AgentClients from '../pages/AgentDashboard/AgentClients';
@@ -40,6 +47,13 @@ import AgentEarnings from '../pages/AgentDashboard/AgentEarnings';
 
 // Client Pages
 import ClientBookings from '../pages/ClientDashboard/ClientBookings';
+
+// Seller Pages
+import ProductManagement from '../pages/Seller/ProductManagement';
+import AddProduct from '../pages/Seller/AddProduct';
+import AddHouseForm from '../pages/Seller/AddHouseForm';
+import AddAccommodationForm from '../pages/Seller/AddAccommodationForm';
+import AddVehicleForm from '../pages/Seller/AddVehicleForm';
 
 // Common Dashboard Pages
 import Profile from '../pages/Profile/Profile';
@@ -61,7 +75,8 @@ const AppContent = () => {
   const location = useLocation();
   const isDashboard = location.pathname.startsWith('/client') || 
                       location.pathname.startsWith('/agent') || 
-                      location.pathname.startsWith('/admin');
+                      location.pathname.startsWith('/admin') ||
+                      location.pathname.startsWith('/seller');
 
   return (
     <div className={`app-container ${isDashboard ? 'dashboard-view' : ''}`}>
@@ -81,9 +96,11 @@ const AppContent = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/verify-otp" element={<VerifyOtp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/booking-details" element={<BookingDetails />} />
+          <Route path="/payment/confirm" element={<PaymentConfirmation />} />
 
           {/* Client Routes */}
           <Route path="/client/*" element={
@@ -119,12 +136,32 @@ const AppContent = () => {
                 <Routes>
                   <Route path="dashboard" element={<AdminDashboard />} />
                   <Route path="users" element={<UserManagement />} />
+                  <Route path="sellers" element={<SellerManagement />} />
+                  <Route path="products" element={<AdminProductManagement />} />
+                  <Route path="commissions" element={<CommissionManagement />} />
                   <Route path="accommodations" element={<AccommodationManagement />} />
                   <Route path="vehicles" element={<VehicleManagement />} />
                   <Route path="houses" element={<HouseManagement />} />
                   <Route path="bookings" element={<BookingManagement />} />
                   <Route path="agents" element={<AgentManagement />} />
                   <Route path="inquiries" element={<InquiryManagement />} />
+                  <Route path="profile" element={<Profile />} />
+                </Routes>
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+
+          {/* Seller Routes */}
+          <Route path="/seller/*" element={
+            <ProtectedRoute allowedRoles={['seller']}>
+              <DashboardLayout role="seller">
+                <Routes>
+                  <Route path="dashboard" element={<SellerDashboard />} />
+                  <Route path="products" element={<ProductManagement />} />
+                  <Route path="products/new" element={<AddProduct />} />
+                  <Route path="products/new/house" element={<AddHouseForm />} />
+                  <Route path="products/new/accommodation" element={<AddAccommodationForm />} />
+                  <Route path="products/new/vehicle" element={<AddVehicleForm />} />
                   <Route path="profile" element={<Profile />} />
                 </Routes>
               </DashboardLayout>

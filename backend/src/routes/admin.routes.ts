@@ -12,7 +12,15 @@ import {
   getAllUsers,
   createAdminUser,
   updateUserRole,
-  deleteUser
+  deleteUser,
+  getAllSellers,
+  approveSeller,
+  rejectSeller,
+  getPendingProducts,
+  approveProduct,
+  rejectProduct,
+  getAllCommissions, // New
+  markCommissionAsPaid // New
 } from '../controllers/admin.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
 
@@ -34,13 +42,25 @@ router.get('/agents/pending', getPendingAgents);
 router.patch('/agents/:id/approve', approveAgent);
 router.patch('/agents/:id/reject', rejectAgent);
 
-// Booking Management
+// Seller Management
+router.get('/sellers', getAllSellers);
+router.patch('/sellers/:id/approve', approveSeller);
+router.patch('/sellers/:id/reject', rejectSeller);
+
+// Product Management
+router.get('/products/pending', getPendingProducts);
+router.patch('/products/:type/:id/approve', approveProduct);
+router.patch('/products/:type/:id/reject', rejectProduct);
+
+// Booking & Payment Management
 router.get('/bookings', getAllBookings);
-router.patch('/bookings/:id/approve', approveBooking); // Add the new route
+router.patch('/bookings/:id/approve', approveBooking);
 router.patch('/bookings/:id/status', updateBookingStatus);
 router.delete('/bookings/:id', deleteBooking);
-
-// Corrected Route for Payment Verification
 router.patch('/bookings/:bookingId/verify-payment', verifyBookingPayment);
+
+// Commission & Payout Management
+router.get('/commissions', getAllCommissions);
+router.patch('/commissions/:id/pay', markCommissionAsPaid);
 
 export default router;

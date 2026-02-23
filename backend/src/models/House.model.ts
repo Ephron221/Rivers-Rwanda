@@ -28,13 +28,8 @@ export interface House extends RowDataPacket {
 }
 
 export const getAllHouses = async (filters: any): Promise<House[]> => {
-  let sql = 'SELECT * FROM houses WHERE 1=1';
+  let sql = 'SELECT * FROM houses WHERE status = \'available\'';
   const params: any[] = [];
-
-  if (filters.status) {
-    sql += ' AND status = ?';
-    params.push(filters.status);
-  }
 
   if (filters.province) {
     sql += ' AND province = ?';
@@ -56,17 +51,18 @@ export const getAllHouses = async (filters: any): Promise<House[]> => {
 };
 
 export const getHouseById = async (id: string): Promise<House | null> => {
-  const sql = 'SELECT * FROM houses WHERE id = ?';
+  const sql = 'SELECT * FROM houses WHERE id = ? AND status = \'available\'';
   const results = await query<House[]>(sql, [id]);
   return results[0] || null;
 };
 
 export const createHouse = async (data: any): Promise<string> => {
   const sql = `
-    INSERT INTO houses (id, title, description, size, total_rooms, bedrooms, bathrooms, has_parking, has_garden, has_wifi, amenities, images, province, district, sector, cell, village, full_address, monthly_rent_price, purchase_price, status, contact_info)
-    VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO houses (id, seller_id, title, description, size, total_rooms, bedrooms, bathrooms, has_parking, has_garden, has_wifi, amenities, images, province, district, sector, cell, village, full_address, monthly_rent_price, purchase_price, status, contact_info)
+    VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   await query(sql, [
+    data.seller_id,
     data.title,
     data.description,
     data.size || null,
@@ -86,7 +82,7 @@ export const createHouse = async (data: any): Promise<string> => {
     data.full_address || null,
     data.monthly_rent_price || null,
     data.purchase_price || null,
-    data.status || 'available',
+    'pending_approval',
     data.contact_info || JSON.stringify({})
   ]);
   

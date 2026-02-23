@@ -3,7 +3,7 @@ import { query } from '../database/connection';
 import * as BookingModel from '../models/Booking.model';
 import * as UserModel from '../models/User.model';
 import * as CommissionModel from '../models/Commission.model';
-import { hashPassword } from '../utils/bcrypt.utils'; // Correctly import the missing function
+import { hashPassword } from '../utils/bcrypt.utils';
 
 export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -92,6 +92,105 @@ export const rejectAgent = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
+export const getAllSellers = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const sql = 'SELECT * FROM sellers';
+        const sellers = await query(sql);
+        res.status(200).json({ success: true, data: sellers });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const approveSeller = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { id } = req.params;
+        const sql = 'UPDATE sellers SET status = "approved" WHERE id = ?';
+        await query(sql, [id]);
+
+        const userSql = 'UPDATE users SET status = "active" WHERE id = (SELECT user_id FROM sellers WHERE id = ?)';
+        await query(userSql, [id]);
+
+        res.status(200).json({ success: true, message: 'Seller approved successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const rejectSeller = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { id } = req.params;
+        const sql = 'UPDATE sellers SET status = "rejected" WHERE id = ?';
+        await query(sql, [id]);
+        res.status(200).json({ success: true, message: 'Seller rejected' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getPendingProducts = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const houses = await query("SELECT id, title as name, 'house' as type, created_at FROM houses WHERE status = 'pending_approval'");
+    const accommodations = await query("SELECT id, name, type, created_at FROM accommodations WHERE status = 'pending_approval'");
+    const vehicles = await query("SELECT id, CONCAT(make, ' ', model) as name, 'vehicle' as type, created_at FROM vehicles WHERE status = 'pending_approval'");
+
+    const pendingProducts = [...(houses as any[]), ...(accommodations as any[]), ...(vehicles as any[])];
+    pendingProducts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    res.status(200).json({ success: true, data: pendingProducts });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTableNameFromType = (type: string): string | null => {
+    const typeMap: { [key: string]: string } = {
+        house: 'houses',
+        accommodation: 'accommodations',
+        vehicle: 'vehicles',
+        apartment: 'accommodations',
+        hotel_room: 'accommodations',
+        event_hall: 'accommodations',
+    };
+    return typeMap[type] || null;
+};
+
+export const approveProduct = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { type, id } = req.params;
+    const tableName = getTableNameFromType(type);
+
+    if (!tableName) {
+        return res.status(400).json({ success: false, message: 'Invalid product type' });
+    }
+
+    const sql = `UPDATE ${tableName} SET status = 'available' WHERE id = ?`;
+    await query(sql, [id]);
+
+    res.status(200).json({ success: true, message: `Product approved successfully` });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const rejectProduct = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { type, id } = req.params;
+    const tableName = getTableNameFromType(type);
+
+    if (!tableName) {
+        return res.status(400).json({ success: false, message: 'Invalid product type' });
+    }
+
+    const sql = `UPDATE ${tableName} SET status = 'rejected' WHERE id = ?`;
+    await query(sql, [id]);
+
+    res.status(200).json({ success: true, message: `Product rejected` });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getAllBookings = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const bookings = await BookingModel.getAllBookings();
@@ -119,16 +218,17 @@ export const updateBookingStatus = async (req: Request, res: Response, next: Nex
 
     if (status === 'completed') {
       const [booking] = await query<BookingModel.Booking[]>('SELECT * FROM bookings WHERE id = ?', [id]);
+      // This logic is now corrected to only create a commission if an agent is involved.
       if (booking && booking.agent_id) {
-        const [agent] = await query<any[]>('SELECT commission_rate FROM agents WHERE id = ?', [booking.agent_id]);
-        if (agent) {
-          const commissionAmount = booking.total_amount * (agent.commission_rate / 100);
-          await CommissionModel.createCommission({
-            agent_id: booking.agent_id,
-            booking_id: id,
-            amount: commissionAmount
-          });
-        }
+          const [agent] = await query<any[]>('SELECT commission_rate FROM agents WHERE id = ?', [booking.agent_id]);
+          if (agent) {
+            const commissionAmount = booking.total_amount * (agent.commission_rate / 100); // Agent's commission
+            await CommissionModel.createCommission({
+              agent_id: booking.agent_id,
+              booking_id: id,
+              amount: commissionAmount
+            });
+          }
       }
     }
 
@@ -178,6 +278,32 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
         bookings: bookingCount.count
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAllCommissions = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const sql = `
+      SELECT c.id, c.amount, c.status, c.earned_at, s.first_name, s.last_name, s.phone_number
+      FROM commissions c
+      JOIN sellers s ON c.seller_id = s.id
+      ORDER BY c.earned_at DESC
+    `;
+    const commissions = await query(sql);
+    res.status(200).json({ success: true, data: commissions });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markCommissionAsPaid = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const sql = 'UPDATE commissions SET status = "paid", paid_at = CURRENT_TIMESTAMP WHERE id = ?';
+    await query(sql, [id]);
+    res.status(200).json({ success: true, message: 'Commission marked as paid' });
   } catch (error) {
     next(error);
   }

@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import authRoutes from './auth.routes';
 import userRoutes from './user.routes';
+import sellerRoutes from './seller.routes';
 import accommodationRoutes from './accommodation.routes';
 import vehicleRoutes from './vehicle.routes';
-import houseRoutes from './house.routes'; // Import house routes
+import houseRoutes from './house.routes';
 import bookingRoutes from './booking.routes';
+import paymentRoutes from './payment.routes'; // Import payment routes
 import adminRoutes from './admin.routes';
 import agentRoutes from './agent.routes';
 import contactRoutes from './contact.routes';
@@ -15,10 +17,12 @@ const router = Router();
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
+router.use('/sellers', sellerRoutes);
 router.use('/accommodations', accommodationRoutes);
 router.use('/vehicles', vehicleRoutes);
-router.use('/houses', houseRoutes); // Register house routes
+router.use('/houses', houseRoutes);
 router.use('/bookings', bookingRoutes);
+router.use('/payments', paymentRoutes); // Register payment routes
 router.use('/admin', adminRoutes);
 router.use('/agents', agentRoutes);
 router.use('/contact', contactRoutes);

@@ -19,17 +19,12 @@ export interface Vehicle extends RowDataPacket {
 }
 
 export const getAllVehicles = async (filters: any): Promise<Vehicle[]> => {
-  let sql = 'SELECT * FROM vehicles WHERE 1=1';
+  let sql = 'SELECT * FROM vehicles WHERE status = \'available\'';
   const params: any[] = [];
 
   if (filters.purpose) {
     sql += ' AND purpose = ?';
     params.push(filters.purpose);
-  }
-
-  if (filters.status) {
-    sql += ' AND status = ?';
-    params.push(filters.status);
   }
 
   if (filters.make) {
@@ -41,17 +36,18 @@ export const getAllVehicles = async (filters: any): Promise<Vehicle[]> => {
 };
 
 export const getVehicleById = async (id: string): Promise<Vehicle | null> => {
-  const sql = 'SELECT * FROM vehicles WHERE id = ?';
+  const sql = 'SELECT * FROM vehicles WHERE id = ? AND status = \'available\'';
   const results = await query<Vehicle[]>(sql, [id]);
   return results[0] || null;
 };
 
 export const createVehicle = async (data: any): Promise<string> => {
   const sql = `
-    INSERT INTO vehicles (id, purpose, make, model, year, vehicle_type, transmission, fuel_type, seating_capacity, daily_rate, sale_price, status, images)
-    VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO vehicles (id, seller_id, purpose, make, model, year, vehicle_type, transmission, fuel_type, seating_capacity, daily_rate, sale_price, status, images)
+    VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   await query(sql, [
+    data.seller_id,
     data.purpose,
     data.make,
     data.model,
@@ -62,7 +58,7 @@ export const createVehicle = async (data: any): Promise<string> => {
     data.seating_capacity,
     data.daily_rate || null,
     data.sale_price || null,
-    data.status || 'available',
+    'pending_approval',
     data.images || JSON.stringify([])
   ]);
   
