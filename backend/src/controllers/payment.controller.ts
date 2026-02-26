@@ -102,14 +102,14 @@ export const confirmPayment = async (req: Request, res: Response, next: NextFunc
 
         // 5. Calculate & Record Commissions (10% System, 5% Agent)
         const totalAmount = Number(booking.total_amount);
-        const systemCommission = totalAmount * 0.10;
-        let agentCommission = 0;
+        const systemFee = totalAmount * 0.10;
+        let agentFee = 0;
 
         if (booking.agent_id) {
-            agentCommission = totalAmount * 0.05;
+            agentFee = totalAmount * 0.05;
             await CommissionModel.createCommission({
                 booking_id: bookingId,
-                amount: agentCommission,
+                amount: agentFee,
                 commission_type: 'agent',
                 agent_id: booking.agent_id,
                 status: 'pending'
@@ -118,13 +118,13 @@ export const confirmPayment = async (req: Request, res: Response, next: NextFunc
 
         await CommissionModel.createCommission({
             booking_id: bookingId,
-            amount: systemCommission,
+            amount: systemFee,
             commission_type: 'system',
             seller_id: sellerId,
             status: 'approved'
         });
 
-        const netAmount = totalAmount - systemCommission - agentCommission;
+        const netAmount = totalAmount - systemFee - agentFee;
 
         // 6. Notify Seller
         if (sellerId) {
@@ -133,7 +133,8 @@ export const confirmPayment = async (req: Request, res: Response, next: NextFunc
                 await sendSaleConfirmationEmail(sellerUsers[0].email, {
                     propertyName,
                     amount: totalAmount,
-                    commission: systemCommission + agentCommission,
+                    systemFee: systemFee,
+                    agentFee: agentFee,
                     netAmount: netAmount
                 });
             }

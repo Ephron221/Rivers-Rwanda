@@ -77,12 +77,10 @@ export const confirmPayment = async (req: Request, res: Response, next: NextFunc
         const booking = await BookingModel.getBookingById(id);
         if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
 
-        // 1. Update Statuses
         await BookingModel.updateBookingStatus(id, 'confirmed');
         await BookingModel.updateBookingPaymentStatus(id, 'paid');
         await PaymentModel.updatePaymentStatusByBookingId(id, 'completed');
 
-        // 2. Get Property Details and Seller Info
         let propertyName = "Property";
         let sellerId = booking.seller_id;
 
@@ -103,42 +101,39 @@ export const confirmPayment = async (req: Request, res: Response, next: NextFunc
             await VehicleModel.updateVehicleStatus(booking.vehicle_id, booking.booking_type.includes('purchase') ? 'sold' : 'rented');
         }
 
-        // 3. Commission Calculations
-        const totalAmount = booking.total_amount;
-        const systemCommission = totalAmount * 0.10; // System Owner 10%
-        let agentCommission = 0;
+        const totalAmount = Number(booking.total_amount);
+        const systemFee = totalAmount * 0.10; 
+        let agentFee = 0;
 
-        // Record Agent Commission if involved (Fixed 5%)
         if (booking.agent_id) {
-            agentCommission = totalAmount * 0.05; 
+            agentFee = totalAmount * 0.05; 
             await CommissionModel.createCommission({
                 booking_id: id,
-                amount: agentCommission,
+                amount: agentFee,
                 commission_type: 'agent',
                 agent_id: booking.agent_id,
                 status: 'pending'
             });
         }
 
-        // Record System Commission
         await CommissionModel.createCommission({
             booking_id: id,
-            amount: systemCommission,
-            commission_type: 'system',
             seller_id: sellerId,
+            amount: systemFee,
+            commission_type: 'system',
             status: 'approved'
         });
 
-        const netAmount = totalAmount - systemCommission - agentCommission;
+        const netAmount = totalAmount - systemFee - agentFee;
 
-        // 4. Send Email to Seller
         if (sellerId) {
             const [sellerUser] = await query<any[]>('SELECT email FROM users WHERE id = (SELECT user_id FROM sellers WHERE id = ?)', [sellerId]);
             if (sellerUser) {
                 await sendSaleConfirmationEmail(sellerUser.email, {
                     propertyName,
                     amount: totalAmount,
-                    commission: systemCommission + agentCommission,
+                    systemFee: systemFee,
+                    agentFee: agentFee,
                     netAmount: netAmount
                 });
             }
