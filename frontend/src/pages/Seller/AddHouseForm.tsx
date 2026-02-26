@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '../../services/api';
@@ -14,18 +14,27 @@ const schema = z.object({
   sector: z.string().min(1, 'Sector is required'),
   bedrooms: z.preprocess(val => Number(val), z.number().min(1, 'At least one bedroom is required')),
   bathrooms: z.preprocess(val => Number(val), z.number().min(1, 'At least one bathroom is required')),
-  purchase_price: z.preprocess(val => Number(val), z.number().positive().optional()),
-  monthly_rent_price: z.preprocess(val => Number(val), z.number().positive().optional()),
-  images: z.any()
+  purchase_price: z.preprocess(val => val ? Number(val) : undefined, z.number().positive().optional()),
+  monthly_rent_price: z.preprocess(val => val ? Number(val) : undefined, z.number().positive().optional()),
+  purpose: z.enum(['rent', 'sale']),
+  images: z.instanceof(FileList)
     .refine(files => files?.length > 0, 'At least one image is required.')
     .refine(files => files?.length <= 6, 'You can upload a maximum of 6 images.'),
   agreed_to_commission: z.boolean().refine(val => val === true, "You must agree to the commission terms."),
+}).refine(data => {
+    if (data.purpose === 'rent') return !!data.monthly_rent_price;
+    if (data.purpose === 'sale') return !!data.purchase_price;
+    return false;
+}, {
+    message: 'Price is required for the selected purpose',
+    path: ['purchase_price'],
 });
 
 const AddHouseForm = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(schema) });
+  const { register, handleSubmit, watch, control, formState: { errors } } = useForm({ resolver: zodResolver(schema), defaultValues: { purpose: 'rent' } });
+  const purpose = watch('purpose');
 
   const onSubmit = async (data: any) => {
     setLoading(true);
@@ -60,6 +69,16 @@ const AddHouseForm = () => {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 bg-white p-8 rounded-lg shadow-md">
       <h2 className="text-xl font-bold text-primary-dark">List a New House</h2>
       
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+              <label className="font-bold">Purpose</label>
+              <select {...register('purpose')} className="w-full p-3 border-2 rounded-lg mt-1">
+                  <option value="rent">For Rent</option>
+                  <option value="sale">For Sale</option>
+              </select>
+          </div>
+      </div>
+
       {/* Basic Information */}
       <div className="space-y-4">
         <div>
@@ -109,20 +128,38 @@ const AddHouseForm = () => {
 
       {/* Pricing */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="font-bold">Purchase Price (USD)</label>
-          <input type="number" {...register('purchase_price')} placeholder="Optional, for sales" className="w-full p-3 border-2 rounded-lg mt-1" />
-        </div>
-        <div>
-          <label className="font-bold">Monthly Rent (USD)</label>
-          <input type="number" {...register('monthly_rent_price')} placeholder="Optional, for rentals" className="w-full p-3 border-2 rounded-lg mt-1" />
-        </div>
+        {purpose === 'sale' && (
+          <div>
+            <label className="font-bold">Purchase Price (USD)</label>
+            <input type="number" {...register('purchase_price')} className="w-full p-3 border-2 rounded-lg mt-1" />
+            {errors.purchase_price && <p className="text-red-500 text-xs mt-1">{errors.purchase_price.message as string}</p>}
+          </div>
+        )}
+        {purpose === 'rent' && (
+          <div>
+            <label className="font-bold">Monthly Rent (USD)</label>
+            <input type="number" {...register('monthly_rent_price')} className="w-full p-3 border-2 rounded-lg mt-1" />
+            {errors.monthly_rent_price && <p className="text-red-500 text-xs mt-1">{errors.monthly_rent_price.message as string}</p>}
+          </div>
+        )}
       </div>
       
       {/* Images */}
       <div>
         <label className="font-bold">Images (up to 6)</label>
-        <input type="file" {...register('images')} multiple accept="image/*" className="w-full p-3 border-2 rounded-lg mt-1 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-accent-orange hover:file:bg-orange-100" />
+        <Controller
+            name="images"
+            control={control}
+            render={({ field }) => (
+                <input 
+                    type="file" 
+                    multiple 
+                    accept="image/*" 
+                    onChange={(e) => field.onChange(e.target.files)}
+                    className="w-full p-3 border-2 rounded-lg mt-1 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-accent-orange hover:file:bg-orange-100"
+                />
+            )}
+        />
         {errors.images && <p className="text-red-500 text-xs mt-1">{errors.images.message as string}</p>}
       </div>
 

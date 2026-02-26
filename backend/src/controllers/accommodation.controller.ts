@@ -4,6 +4,7 @@ import * as UserModel from '../models/User.model';
 import * as SellerModel from '../models/Seller.model';
 import fs from 'fs';
 import path from 'path';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 export const getAccommodations = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -27,9 +28,9 @@ export const getAccommodation = async (req: Request, res: Response, next: NextFu
   }
 };
 
-export const createAccommodation = async (req: Request, res: Response, next: NextFunction) => {
+export const createAccommodation = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const userId = (req as any).user.userId;
+    const userId = req.user?.userId;
     if (!userId) {
         return res.status(401).json({ success: false, message: 'Authentication error.' });
     }
@@ -49,12 +50,11 @@ export const createAccommodation = async (req: Request, res: Response, next: Nex
     }
 
     const { agreed_to_commission } = req.body;
-    if (!seller.agreed_to_commission && agreed_to_commission !== 'true') {
-        return res.status(403).json({ success: false, message: 'You must agree to the commission terms to create a listing.' });
+    if (!seller.agreed_to_commission && String(agreed_to_commission) !== 'true') {
+        return res.status(403).json({ success: false, message: 'You do not have permission to perform this action.' });
     }
 
-    // Update the seller's commission agreement status if they just agreed
-    if (!seller.agreed_to_commission && agreed_to_commission === 'true') {
+    if (!seller.agreed_to_commission && String(agreed_to_commission) === 'true') {
         await SellerModel.updateSeller(sellerId, { agreed_to_commission: true } as Partial<SellerModel.Seller>);
     }
 

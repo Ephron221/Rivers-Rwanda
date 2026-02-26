@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import * as ReviewModel from '../models/Review.model';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
-export const submitReview = async (req: Request, res: Response, next: NextFunction) => {
+export const submitReview = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const clientId = req.user?.userId;
     if (!clientId) {

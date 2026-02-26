@@ -286,9 +286,9 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
 export const getAllCommissions = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const sql = `
-      SELECT c.id, c.amount, c.status, c.earned_at, s.first_name, s.last_name, s.phone_number
+      SELECT c.id, c.amount, c.status, c.earned_at, a.first_name, a.last_name, a.phone_number
       FROM commissions c
-      JOIN sellers s ON c.seller_id = s.id
+      JOIN agents a ON c.agent_id = a.id
       ORDER BY c.earned_at DESC
     `;
     const commissions = await query(sql);

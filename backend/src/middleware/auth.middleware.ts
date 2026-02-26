@@ -2,15 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import { verifyToken, TokenPayload } from '../utils/jwt.utils';
 import { query } from '../database/connection';
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: TokenPayload;
-    }
-  }
+// Define AuthenticatedRequest interface to include the user property
+export interface AuthenticatedRequest extends Request {
+  user?: TokenPayload;
 }
 
-export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
+export const authenticate = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -42,7 +39,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 };
 
 export const authorize = (...roles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user || !roles.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'You do not have permission to perform this action.' });
     }

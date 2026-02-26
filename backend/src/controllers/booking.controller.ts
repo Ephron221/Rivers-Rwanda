@@ -6,6 +6,7 @@ import * as VehicleModel from '../models/Vehicle.model';
 import * as HouseModel from '../models/House.model';
 import { getClientIdByUserId } from '../models/User.model';
 import QRCode from 'qrcode';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 const getRelativePath = (fullPath: string): string => {
     const uploadsDir = 'uploads';
@@ -15,7 +16,7 @@ const getRelativePath = (fullPath: string): string => {
     return '/' + relativePath.replace(/\\/g, '/');
 }
 
-export const createBooking = async (req: Request, res: Response, next: NextFunction) => {
+export const createBooking = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ success: false, message: 'User not authenticated' });
@@ -100,7 +101,7 @@ export const confirmPayment = async (req: Request, res: Response, next: NextFunc
     }
 };
 
-export const getMyBookings = async (req: Request, res: Response, next: NextFunction) => {
+export const getMyBookings = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ success: false, message: 'User not authenticated' });

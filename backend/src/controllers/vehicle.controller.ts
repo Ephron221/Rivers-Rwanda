@@ -4,6 +4,7 @@ import * as UserModel from '../models/User.model';
 import * as SellerModel from '../models/Seller.model';
 import fs from 'fs';
 import path from 'path';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 export const getVehicles = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -27,11 +28,14 @@ export const getVehicle = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const createVehicle = async (req: Request, res: Response, next: NextFunction) => {
+export const createVehicle = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const userId = (req as any).user.id;
-    const sellerId = await UserModel.getSellerIdByUserId(userId);
+    const userId = req.user?.userId;
+    if (!userId) {
+        return res.status(401).json({ success: false, message: 'Authentication error.' });
+    }
 
+    const sellerId = await UserModel.getSellerIdByUserId(userId);
     if (!sellerId) {
         return res.status(403).json({ success: false, message: 'User is not a valid seller.' });
     }
@@ -45,8 +49,13 @@ export const createVehicle = async (req: Request, res: Response, next: NextFunct
         return res.status(403).json({ success: false, message: 'Your seller account has not been approved.' });
     }
 
-    if (!seller.agreed_to_commission) {
-        return res.status(403).json({ success: false, message: 'You must agree to the commission terms to create a listing.' });
+    const { agreed_to_commission } = req.body;
+    if (!seller.agreed_to_commission && String(agreed_to_commission) !== 'true') {
+        return res.status(403).json({ success: false, message: 'You do not have permission to perform this action.' });
+    }
+
+    if (!seller.agreed_to_commission && String(agreed_to_commission) === 'true') {
+        await SellerModel.updateSeller(sellerId, { agreed_to_commission: true } as Partial<SellerModel.Seller>);
     }
 
     const imagePaths: string[] = [];

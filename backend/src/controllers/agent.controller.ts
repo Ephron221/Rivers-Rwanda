@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import * as CommissionModel from '../models/Commission.model';
 import { query } from '../database/connection';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 // Helper function to get agent ID from user ID
 const getAgentId = async (userId: string | undefined): Promise<string | null> => {
@@ -14,7 +15,7 @@ const getAgentId = async (userId: string | undefined): Promise<string | null> =>
     }
 };
 
-export const getMyCommissions = async (req: Request, res: Response, next: NextFunction) => {
+export const getMyCommissions = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const agentId = await getAgentId(req.user?.userId);
     if (!agentId) {
@@ -27,7 +28,7 @@ export const getMyCommissions = async (req: Request, res: Response, next: NextFu
   }
 };
 
-export const getMyStats = async (req: Request, res: Response, next: NextFunction) => {
+export const getMyStats = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const agentId = await getAgentId(req.user?.userId);
     if (!agentId) {
@@ -40,7 +41,7 @@ export const getMyStats = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const getMyReferralCode = async (req: Request, res: Response, next: NextFunction) => {
+export const getMyReferralCode = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
@@ -56,7 +57,7 @@ export const getMyReferralCode = async (req: Request, res: Response, next: NextF
   }
 };
 
-export const getMyClients = async (req: Request, res: Response, next: NextFunction) => {
+export const getMyClients = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         const agentId = await getAgentId(req.user?.userId);
         if (!agentId) {

@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import { sendOtpEmail } from '../services/email.service';
 import { generateOtp } from '../utils/otpGenerator';
 import { User } from '../models/User.model';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 export const registerSeller = async (req: Request, res: Response, next: NextFunction) => {
     const { email, password, firstName, lastName, phoneNumber, nationalId } = req.body;
@@ -83,10 +84,9 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
     }
 };
 
-export const getSellerProducts = async (req: Request, res: Response, next: NextFunction) => {
+export const getSellerProducts = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-        // The user object with userId is attached to the request by your existing auth middleware.
-        const userId = (req as any).user.userId;
+        const userId = req.user?.userId;
         if (!userId) {
             return res.status(401).json({ success: false, message: 'Authentication error: User ID not found.' });
         }

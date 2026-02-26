@@ -1,17 +1,30 @@
 import { useEffect, useState } from 'react';
 import api from '../../services/api';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { MapPin, Tag, Star, Search, Building2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const AccommodationsList = () => {
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  
   const [accommodations, setAccommodations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
-    type: '',
-    city: '',
-    maxPrice: '',
+    type: queryParams.get('type') || '',
+    city: queryParams.get('city') || '',
+    maxPrice: queryParams.get('maxPrice') || '',
+    purpose: queryParams.get('purpose') || '',
   });
+
+  useEffect(() => {
+    setFilters({
+      type: queryParams.get('type') || '',
+      city: queryParams.get('city') || '',
+      maxPrice: queryParams.get('maxPrice') || '',
+      purpose: queryParams.get('purpose') || '',
+    });
+  }, [location.search]);
 
   const fetchAccommodations = async () => {
     setLoading(true);
@@ -20,6 +33,7 @@ const AccommodationsList = () => {
       if (filters.type) params.append('type', filters.type);
       if (filters.city) params.append('city', filters.city);
       if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
+      if (filters.purpose) params.append('purpose', filters.purpose);
       
       const response = await api.get(`/accommodations?${params.toString()}`);
       setAccommodations(response.data.data);
@@ -86,8 +100,7 @@ const AccommodationsList = () => {
             </span>
 
             <h1 className="text-5xl md:text-8xl font-black text-white uppercase tracking-tighter leading-none">
-              EXPLORE OUR <br />
-              <span className="text-accent-orange">ACCOMMODATIONS</span>
+              {filters.type ? filters.type.replace('_', ' ') + 's' : 'ACCOMMODATIONS'}
             </h1>
 
             <p className="max-w-2xl -button-2 mx-auto text-gray-300 font-medium text-sm md:text-lg leading-relaxed">
@@ -104,7 +117,7 @@ const AccommodationsList = () => {
             transition={{  duration: 0.8, delay: 0.2 }}
             className="max-w-6xl mx-auto bg-white rounded-[2.5rem] shadow-2xl shadow-gray-900/20 p-4 flex flex-col md:flex-row items-center gap-4 border border-gray-100"
           >
-            <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-3 gap-4 px-6">
+            <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-4 gap-4 px-6">
               <div className="flex items-center gap-4 group">
                 <div className="p-3 bg-orange-50 text-accent-orange rounded-2xl group-hover:scale-110 transition-transform">
                   <MapPin size={20} />
@@ -147,17 +160,36 @@ const AccommodationsList = () => {
               </div>
 
               <div className="flex items-center gap-4 group border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-8">
+                <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl group-hover:scale-110 transition-transform">
+                  <Tag size={20} />
+                </div>
+                <div className="flex-1">
+                  <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest">Purpose</span>
+                  <select
+                    name="purpose"
+                    value={filters.purpose}
+                    onChange={handleFilterChange}
+                    className="w-full bg-transparent outline-none font-black text-primary-dark uppercase text-xs cursor-pointer"
+                  >
+                    <option value="">Any Purpose</option>
+                    <option value="rent">For Rent</option>
+                    <option value="sale">For Sale</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 group border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-8">
                 <div className="p-3 bg-green-50 text-green-600 rounded-2xl group-hover:scale-110 transition-transform">
                   <Tag size={20} />
                 </div>
                 <div className="flex-1">
-                  <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest">Budget</span>
+                  <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest">Max Budget</span>
                   <input
                     type="number"
                     name="maxPrice"
                     value={filters.maxPrice}
                     onChange={handleFilterChange}
-                    placeholder="Max Price (Rwf)"
+                    placeholder="Budget (Rwf)"
                     className="w-full bg-transparent outline-none font-black text-primary-dark uppercase text-xs placeholder:uppercase"
                   />
                 </div>
@@ -200,7 +232,7 @@ const AccommodationsList = () => {
               accommodations.map((item) => {
                 const images = parseImages(item.images);
                 const imageUrl = images[0] ? `http://localhost:5000${images[0]}` : 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=800';
-                const price = item.price_per_night || item.price_per_event;
+                const price = item.price_per_night || item.price_per_event || item.price_for_sale;
 
                 return (
                   <motion.div
@@ -222,7 +254,9 @@ const AccommodationsList = () => {
                        <div className="absolute bottom-8 right-8 p-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
                         <div className="bg-accent-orange text-white px-6 py-3 rounded-2xl font-black text-sm shadow-2xl uppercase tracking-tighter">
                           Rwf {price?.toLocaleString()}
-                          <span className="font-bold normal-case text-white/80 ml-1">/ night</span>
+                          <span className="font-bold normal-case text-white/80 ml-1">
+                            {item.price_per_night ? '/ night' : item.price_per_event ? '/ event' : ''}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -265,7 +299,7 @@ const AccommodationsList = () => {
                 </div>
                 <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">No accommodations found matching your criteria.</p>
                 <button 
-                  onClick={() => setFilters({type: '', city: '', maxPrice: ''})}
+                  onClick={() => setFilters({type: '', city: '', maxPrice: '', purpose: ''})}
                   className="mt-6 bg-accent-orange text-white px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-primary-dark transition-all"
                 >
                   Clear all filters

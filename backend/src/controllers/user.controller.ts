@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { query } from '../database/connection';
+import { TokenPayload } from '../utils/jwt.utils';
 
-export const getProfile = async (req: Request, res: Response, next: NextFunction) => {
+// Define a local interface or use global augmentation
+interface AuthenticatedRequest extends Request {
+  user?: TokenPayload;
+}
+
+export const getProfile = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const userId = req.user?.userId;
   const role = req.user?.role;
 
@@ -63,11 +69,11 @@ export const getProfile = async (req: Request, res: Response, next: NextFunction
       } 
     });
   } catch (error: any) {
-    next(error); // Pass errors to the global error handler
+    next(error);
   }
 };
 
-export const updateProfile = async (req: Request, res: Response, next: NextFunction) => {
+export const updateProfile = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         const userId = req.user?.userId;
         const role = req.user?.role;
@@ -110,7 +116,7 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
                 await query(updateSql, params);
             }
         } else {
-            // Insert new profile - with strict validation
+            // Insert new profile
             if (!firstName || !lastName) {
                  return res.status(400).json({ success: false, message: 'First name and last name are required.' });
             }
@@ -125,6 +131,6 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
         res.status(200).json({ success: true, message: 'Profile updated successfully' });
     } catch (error: any) {
         console.error('[UPDATE PROFILE ERROR]:', error.message);
-        next(error); // Pass all errors to the global handler to prevent crashes
+        next(error);
     }
 };

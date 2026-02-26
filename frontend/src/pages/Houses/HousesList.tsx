@@ -49,7 +49,7 @@ const HousesList = () => {
   const itemVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
 
   return (
-    <div className="bg-light-gray min-h-screen pt-20">
+    <div className="bg-light-gray min-h-screen pt-0">
       <div className="relative bg-primary-dark/80 pt-60 pb-24 text-center text-white overflow-hidden"><div className="absolute inset-0 z-0"><img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=2000" alt="Hero Houses" className="w-full h-full object-cover opacity-20"/><div className="absolute inset-0 bg-gradient-to-b from-primary-dark/50 via-primary-dark/80 to-primary-dark"></div></div><div className="relative z-10 container mx-auto px-4"><motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}><h1 className="text-4xl md:text-6xl font-black uppercase tracking-widest mb-4">Our Houses</h1><div className="flex items-center justify-center gap-2 text-accent-orange"><span className="w-12 h-1 bg-accent-orange rounded-full"></span><span className="text-sm font-black uppercase tracking-[0.3em]">Find Your Dream Home</span><span className="w-12 h-1 bg-accent-orange rounded-full"></span></div></motion.div></div></div>
 
       <div className="container mx-auto px-4 -mt-12 relative z-20">

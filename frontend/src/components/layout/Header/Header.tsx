@@ -78,7 +78,16 @@ const Header = () => {
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'About', path: '/about' },
-    { name: 'Accommodations', path: '/accommodations' },
+    { 
+      name: 'Accommodations', 
+      path: '/accommodations',
+      dropdown: [
+        { name: 'Apartments for Rent', path: '/accommodations?type=apartment&purpose=rent' },
+        { name: 'Apartments for Sale', path: '/accommodations?type=apartment&purpose=sale' },
+        { name: 'Hotel Rooms', path: '/accommodations?type=hotel_room' },
+        { name: 'Event Halls', path: '/accommodations?type=event_hall' }
+      ]
+    },
     { name: 'Cars', path: '/cars', dropdown: [{ name: 'For Rent', path: '/cars?purpose=rent' }, { name: 'For Sale', path: '/cars?purpose=buy' }] },
     { name: 'Houses', path: '/houses', dropdown: [{ name: 'For Rent', path: '/houses?purpose=rent' }, { name: 'For Sale', path: '/houses?purpose=purchase' }] },
     { name: 'Contact', path: '/contact' },
