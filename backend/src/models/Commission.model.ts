@@ -2,37 +2,50 @@ import { query } from '../database/connection';
 import { RowDataPacket } from 'mysql2';
 import { v4 as uuidv4 } from 'uuid';
 
-// This interface is for agent commissions
 export interface Commission extends RowDataPacket {
   id: string;
-  agent_id: string;
+  agent_id?: string;
+  seller_id?: string;
   booking_id: string;
   amount: number;
+  commission_type: 'system' | 'agent' | 'seller_payout';
   status: 'pending' | 'approved' | 'paid' | 'cancelled';
   earned_at: Date;
   paid_at?: Date;
 }
 
-// This function correctly creates a commission record for an AGENT
-export const createCommission = async (data: { agent_id: string, booking_id: string, amount: number }): Promise<void> => {
+export const createCommission = async (data: { 
+  booking_id: string, 
+  amount: number, 
+  commission_type: 'system' | 'agent' | 'seller_payout',
+  agent_id?: string,
+  seller_id?: string,
+  status?: string
+}): Promise<void> => {
   const commissionId = uuidv4();
   const sql = `
-    INSERT INTO commissions (id, agent_id, booking_id, amount, status, earned_at)
-    VALUES (?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
+    INSERT INTO commissions (id, booking_id, amount, commission_type, agent_id, seller_id, status, earned_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `;
-  await query(sql, [commissionId, data.agent_id, data.booking_id, data.amount]);
+  await query(sql, [
+    commissionId, 
+    data.booking_id, 
+    data.amount, 
+    data.commission_type, 
+    data.agent_id || null, 
+    data.seller_id || null,
+    data.status || 'pending'
+  ]);
 };
 
-// Restored function for agents to get their commissions
 export const getCommissionsByAgentId = async (agentId: string): Promise<Commission[]> => {
-  const sql = 'SELECT * FROM commissions WHERE agent_id = ? ORDER BY earned_at DESC';
+  const sql = 'SELECT * FROM commissions WHERE agent_id = ? AND commission_type = "agent" ORDER BY earned_at DESC';
   return await query<Commission[]>(sql, [agentId]);
 };
 
-// Restored function for agent stats
 export const getAgentStats = async (agentId: string): Promise<any> => {
-  const totalEarnedSql = 'SELECT SUM(amount) as totalEarned FROM commissions WHERE agent_id = ? AND status IN ("approved", "paid")';
-  const pendingSql = 'SELECT SUM(amount) as totalPending FROM commissions WHERE agent_id = ? AND status = "pending"';
+  const totalEarnedSql = 'SELECT SUM(amount) as totalEarned FROM commissions WHERE agent_id = ? AND commission_type = "agent" AND status IN ("approved", "paid")';
+  const pendingSql = 'SELECT SUM(amount) as totalPending FROM commissions WHERE agent_id = ? AND commission_type = "agent" AND status = "pending"';
   const clientsSql = 'SELECT COUNT(DISTINCT client_id) as totalClients FROM bookings WHERE agent_id = ?';
   
   const [totalEarnedResult] = await query<any[]>(totalEarnedSql, [agentId]);

@@ -215,23 +215,6 @@ export const updateBookingStatus = async (req: Request, res: Response, next: Nex
     const { id } = req.params;
     const { status } = req.body;
     await BookingModel.updateBookingStatus(id, status);
-
-    if (status === 'completed') {
-      const [booking] = await query<BookingModel.Booking[]>('SELECT * FROM bookings WHERE id = ?', [id]);
-      // This logic is now corrected to only create a commission if an agent is involved.
-      if (booking && booking.agent_id) {
-          const [agent] = await query<any[]>('SELECT commission_rate FROM agents WHERE id = ?', [booking.agent_id]);
-          if (agent) {
-            const commissionAmount = booking.total_amount * (agent.commission_rate / 100); // Agent's commission
-            await CommissionModel.createCommission({
-              agent_id: booking.agent_id,
-              booking_id: id,
-              amount: commissionAmount
-            });
-          }
-      }
-    }
-
     res.status(200).json({ success: true, message: `Booking ${status} successfully` });
   } catch (error) {
     next(error);
@@ -286,14 +269,32 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
 export const getAllCommissions = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const sql = `
-      SELECT c.id, c.amount, c.status, c.earned_at, a.first_name, a.last_name, a.phone_number
+      SELECT 
+        c.id, c.amount, c.status, c.earned_at, c.commission_type,
+        CASE 
+          WHEN c.commission_type = 'agent' THEN a.first_name 
+          WHEN c.commission_type = 'system' THEN s.first_name 
+          ELSE 'System' 
+        END as first_name,
+        CASE 
+          WHEN c.commission_type = 'agent' THEN a.last_name 
+          WHEN c.commission_type = 'system' THEN s.last_name 
+          ELSE 'Owner' 
+        END as last_name,
+        CASE 
+          WHEN c.commission_type = 'agent' THEN a.phone_number 
+          WHEN c.commission_type = 'system' THEN s.phone_number 
+          ELSE 'N/A' 
+        END as phone_number
       FROM commissions c
-      JOIN agents a ON c.agent_id = a.id
+      LEFT JOIN agents a ON c.agent_id = a.id
+      LEFT JOIN sellers s ON c.seller_id = s.id
       ORDER BY c.earned_at DESC
     `;
     const commissions = await query(sql);
     res.status(200).json({ success: true, data: commissions });
   } catch (error) {
+    console.error('[GET_ALL_COMMISSIONS_ERROR]:', error);
     next(error);
   }
 };

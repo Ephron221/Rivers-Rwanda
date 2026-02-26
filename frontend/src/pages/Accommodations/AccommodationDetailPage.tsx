@@ -30,15 +30,21 @@ const AccommodationDetailPage = () => {
 
   const handlePayment = async () => {
     setIsProcessingPayment(true);
+    const price = item.price_per_night || item.price_per_event || item.sale_price;
+    
     try {
-      const bookingResponse = await api.post('/bookings', {
-        item_id: id,
-        item_type: 'accommodation',
+      const bookingData: any = {
+        booking_type: 'accommodation',
+        total_amount: price, // Added the missing total_amount here
         start_date: new Date().toISOString().split('T')[0],
         end_date: new Date().toISOString().split('T')[0],
-      });
+        accommodation_id: id
+      };
 
+      const bookingResponse = await api.post('/bookings', bookingData);
       const { bookingId } = bookingResponse.data.data;
+
+      // Second, initiate the payment for that booking
       const paymentResponse = await api.post('/payments', { bookingId });
 
       toast.success('Redirecting to payment confirmation...');
@@ -80,7 +86,7 @@ const AccommodationDetailPage = () => {
 
   const images = parseImages(item.images);
   const amenities = parseAmenities(item.amenities);
-  const price = item.price_per_night || item.price_per_event || item.price_for_sale;
+  const price = item.price_per_night || item.price_per_event || item.sale_price;
 
   return (
     <div className="bg-[#f8f9fa] min-h-screen pb-20 pt-24 md:pt-32">
@@ -151,7 +157,7 @@ const AccommodationDetailPage = () => {
                     <div className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-3xl">
                       <Wifi size={24} className="text-accent-orange" />
                       <span className="text-[10px] font-black uppercase text-gray-400">Wifi</span>
-                      <span className="text-[10px] font-black text-primary-dark uppercase">Available</span>
+                      <span className="text-[10px] font-black text-primary-dark uppercase">{item.wifi ? 'Available' : 'No'}</span>
                     </div>
                   </>
                 )}
@@ -160,8 +166,8 @@ const AccommodationDetailPage = () => {
                   <>
                     <div className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-3xl">
                       <Info size={24} className="text-accent-orange" />
-                      <span className="text-[10px] font-black uppercase text-gray-400">Hotel Type</span>
-                      <span className="text-[10px] font-black text-primary-dark uppercase text-center">{item.hotel_details?.star_rating || 'Luxury'}</span>
+                      <span className="text-[10px] font-black uppercase text-gray-400">Floor</span>
+                      <span className="text-[10px] font-black text-primary-dark uppercase text-center">{item.floor_number || 'N/A'}</span>
                     </div>
                     <div className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-3xl">
                       <BedDouble size={24} className="text-accent-orange" />
@@ -191,12 +197,12 @@ const AccommodationDetailPage = () => {
                     <div className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-3xl">
                       <Car size={24} className="text-accent-orange" />
                       <span className="text-[10px] font-black uppercase text-gray-400">Parking</span>
-                      <span className="text-[10px] font-black text-primary-dark uppercase">Large Space</span>
+                      <span className="text-[10px] font-black text-primary-dark uppercase">{item.parking ? 'Large Space' : 'Limited'}</span>
                     </div>
                     <div className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-3xl">
                       <Wifi size={24} className="text-accent-orange" />
-                      <span className="text-[10px] font-black uppercase text-gray-400">Audio/Visual</span>
-                      <span className="text-[10px] font-black text-primary-dark uppercase">Ready</span>
+                      <span className="text-[10px] font-black uppercase text-gray-400">WiFi</span>
+                      <span className="text-[10px] font-black text-primary-dark uppercase">{item.wifi ? 'Available' : 'No'}</span>
                     </div>
                     <div className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-3xl">
                       <Calendar size={24} className="text-accent-orange" />
@@ -236,7 +242,7 @@ const AccommodationDetailPage = () => {
                 <div className="text-center space-y-2">
                   <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Total Price</span>
                   <div className="text-6xl font-black text-accent-orange tracking-tighter">
-                    ${price?.toLocaleString()}
+                    Rwf {price?.toLocaleString()}
                   </div>
                   <span className="text-[11px] font-bold uppercase text-gray-300 tracking-widest">
                     {item.price_per_night ? 'per night' : item.price_per_event ? 'per event' : 'full price'}
@@ -264,7 +270,7 @@ const AccommodationDetailPage = () => {
                 >
                   {isProcessingPayment ? 'Processing...' : (
                     <>
-                       {item.price_for_sale ? 'Buy Now' : 'Rent Now'}
+                       {item.purpose === 'sale' ? 'Buy Now' : 'Rent Now'}
                        <ArrowLeft size={16} className="rotate-180 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}

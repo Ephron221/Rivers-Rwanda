@@ -97,9 +97,9 @@ CREATE TABLE accommodations (
     city VARCHAR(100) NOT NULL,
     district VARCHAR(100) NOT NULL,
     street_address TEXT,
-    price_per_night DECIMAL(12,2), -- All prices in RWF
-    price_per_event DECIMAL(12,2), -- All prices in RWF
-    sale_price DECIMAL(12,2),      -- All prices in RWF
+    price_per_night DECIMAL(12,2),
+    price_per_event DECIMAL(12,2),
+    sale_price DECIMAL(12,2),
     currency ENUM('RWF') DEFAULT 'RWF',
     bedrooms INT,
     bathrooms INT,
@@ -136,8 +136,8 @@ CREATE TABLE vehicles (
     transmission ENUM('automatic', 'manual') NOT NULL,
     fuel_type ENUM('petrol', 'diesel', 'electric', 'hybrid') NOT NULL,
     seating_capacity INT NOT NULL,
-    daily_rate DECIMAL(12,2), -- All prices in RWF
-    sale_price DECIMAL(12,2), -- All prices in RWF
+    daily_rate DECIMAL(12,2),
+    sale_price DECIMAL(12,2),
     currency ENUM('RWF') DEFAULT 'RWF',
     features JSON,
     images JSON,
@@ -181,8 +181,8 @@ CREATE TABLE houses (
     cell VARCHAR(100),
     village VARCHAR(100),
     full_address TEXT,
-    monthly_rent_price DECIMAL(12,2), -- All prices in RWF
-    purchase_price DECIMAL(12,2),     -- All prices in RWF
+    monthly_rent_price DECIMAL(12,2),
+    purchase_price DECIMAL(12,2),
     currency ENUM('RWF') DEFAULT 'RWF',
     status ENUM('pending_approval', 'available', 'under maintenance', 'rented', 'purchased', 'rejected') DEFAULT 'pending_approval',
     featured BOOLEAN DEFAULT FALSE,
@@ -207,7 +207,7 @@ CREATE TABLE bookings (
     house_id CHAR(36) NULL,
     start_date DATE,
     end_date DATE,
-    total_amount DECIMAL(12,2) NOT NULL, -- All prices in RWF
+    total_amount DECIMAL(12,2) NOT NULL,
     booking_status ENUM('pending', 'approved', 'confirmed', 'completed', 'cancelled', 'rejected') DEFAULT 'pending',
     payment_status ENUM('pending', 'paid', 'refunded') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -229,7 +229,7 @@ CREATE TABLE bookings (
 CREATE TABLE payments (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     booking_id CHAR(36) NOT NULL,
-    amount DECIMAL(12,2) NOT NULL, -- All prices in RWF
+    amount DECIMAL(12,2) NOT NULL,
     payment_method ENUM('bank_transfer', 'mobile_money', 'cash', 'other') NOT NULL,
     transaction_id VARCHAR(255),
     payment_proof_path VARCHAR(255),
@@ -244,16 +244,21 @@ CREATE TABLE payments (
 -- 11. COMMISSIONS TABLE
 CREATE TABLE commissions (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    agent_id CHAR(36) NOT NULL,
+    agent_id CHAR(36) NULL,
+    seller_id CHAR(36) NULL, -- To link the source seller
     booking_id CHAR(36) NOT NULL,
-    amount DECIMAL(12,2) NOT NULL, -- All prices in RWF
+    amount DECIMAL(12,2) NOT NULL,
+    commission_type ENUM('system', 'agent', 'seller_payout') NOT NULL DEFAULT 'system',
     status ENUM('pending', 'approved', 'paid', 'cancelled') DEFAULT 'pending',
     earned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     paid_at TIMESTAMP NULL,
     FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+    FOREIGN KEY (seller_id) REFERENCES sellers(id) ON DELETE CASCADE,
     FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
     INDEX idx_agent (agent_id),
-    INDEX idx_status (status)
+    INDEX idx_seller (seller_id),
+    INDEX idx_status (status),
+    INDEX idx_type (commission_type)
 ) ENGINE=InnoDB;
 
 -- 12. CONTACT_INQUIRIES TABLE

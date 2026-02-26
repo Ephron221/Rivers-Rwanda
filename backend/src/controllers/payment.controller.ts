@@ -2,6 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import { query } from '../database/connection';
 import * as BookingModel from '../models/Booking.model';
 import * as CommissionModel from '../models/Commission.model';
+import * as HouseModel from '../models/House.model';
+import * as AccommodationModel from '../models/Accommodation.model';
+import * as VehicleModel from '../models/Vehicle.model';
+import { getClientIdByUserId } from '../models/User.model';
+import { sendSaleConfirmationEmail } from '../services/email.service';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 // Placeholder for a real payment gateway integration
 const callPaymentGateway = async (amount: number, currency: string, description: string) => {
@@ -9,13 +15,17 @@ const callPaymentGateway = async (amount: number, currency: string, description:
     return `txn_${Date.now()}`;
 };
 
-export const initiatePayment = async (req: Request, res: Response, next: NextFunction) => {
+export const initiatePayment = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         const { bookingId } = req.body;
-        const userId = (req as any).user.id;
+        const userId = req.user?.userId;
 
+        if (!userId) return res.status(401).json({ success: false, message: 'User not authenticated' });
+
+        const clientId = await getClientIdByUserId(userId);
         const booking = await BookingModel.getBookingById(bookingId);
-        if (!booking || booking.client_id !== userId) {
+
+        if (!booking || booking.client_id !== clientId) {
             return res.status(404).json({ success: false, message: 'Booking not found or access denied.' });
         }
 
@@ -23,23 +33,26 @@ export const initiatePayment = async (req: Request, res: Response, next: NextFun
             return res.status(400).json({ success: false, message: 'This booking has already been paid.' });
         }
 
-        const transactionRef = await callPaymentGateway(booking.total_amount, 'USD', `Booking for ${booking.booking_type}`);
+        const transactionRef = await callPaymentGateway(booking.total_amount, 'RWF', `Booking for ${booking.booking_type}`);
 
-        const paymentResult = await query(
+        await query(
             'INSERT INTO payments (id, booking_id, amount, payment_method, transaction_id, status) VALUES (UUID(), ?, ?, ?, ?, ?)',
             [bookingId, booking.total_amount, 'mobile_money', transactionRef, 'pending']
         );
+
+        const paymentRows = await query<any[]>('SELECT id FROM payments WHERE transaction_id = ?', [transactionRef]);
 
         res.status(200).json({ 
             success: true, 
             message: 'Payment initiated.', 
             data: {
                 transactionReference: transactionRef,
-                paymentId: (paymentResult as any).insertId
+                paymentId: paymentRows[0].id
             }
         });
 
     } catch (error) {
+        console.error("INITIATE_PAYMENT_ERROR:", error);
         next(error);
     }
 };
@@ -48,32 +61,88 @@ export const confirmPayment = async (req: Request, res: Response, next: NextFunc
     try {
         const { paymentId, transactionReference } = req.body;
 
-        const isPaymentSuccessful = true; // Assume success for this simulation
-
-        if (!isPaymentSuccessful) {
-            await query("UPDATE payments SET status = 'failed' WHERE id = ?", [paymentId]);
-            return res.status(400).json({ success: false, message: 'Payment confirmation failed.' });
+        // 1. Mark Payment as completed
+        await query("UPDATE payments SET status = 'completed', verified_at = CURRENT_TIMESTAMP WHERE id = ?", [paymentId]);
+        const paymentRows = await query<any[]>('SELECT booking_id FROM payments WHERE id = ?', [paymentId]);
+        
+        if (paymentRows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Payment record not found.' });
         }
 
-        await query("UPDATE payments SET status = 'completed', verified_at = CURRENT_TIMESTAMP WHERE id = ?", [paymentId]);
-        const [payment] = await query<any[]>('SELECT booking_id FROM payments WHERE id = ?', [paymentId]);
-        await BookingModel.updateBookingStatus(payment[0].booking_id, 'confirmed');
-        await query("UPDATE bookings SET payment_status = 'paid' WHERE id = ?", [payment[0].booking_id]);
+        const bookingId = paymentRows[0].booking_id;
+        
+        // 2. Fetch booking details
+        const booking = await BookingModel.getBookingById(bookingId);
+        if (!booking) return res.status(404).json({ success: false, message: 'Booking not found.' });
 
-        // Correctly handle booking object and create commission ONLY for agents
-        const booking = await BookingModel.getBookingById(payment[0].booking_id);
-        if (booking && booking.agent_id) {
-            const commissionAmount = booking.total_amount * 0.05; // 5% commission for Agents
+        // 3. Update Statuses
+        await BookingModel.updateBookingStatus(bookingId, 'confirmed');
+        await BookingModel.updateBookingPaymentStatus(bookingId, 'paid');
+
+        let propertyName = "Property";
+        let sellerId = booking.seller_id;
+
+        // 4. Resolve Property Specifics
+        if (booking.house_id) {
+            const house = await HouseModel.getHouseById(booking.house_id);
+            propertyName = house?.title || "House";
+            if (!sellerId) sellerId = house?.seller_id;
+            await HouseModel.updateHouseStatus(booking.house_id, booking.booking_type.includes('purchase') ? 'purchased' : 'rented');
+        } else if (booking.accommodation_id) {
+            const acc = await AccommodationModel.getAccommodationById(booking.accommodation_id);
+            propertyName = acc?.name || "Accommodation";
+            if (!sellerId) sellerId = acc?.seller_id;
+            await AccommodationModel.updateAccommodationStatus(booking.accommodation_id, 'unavailable');
+        } else if (booking.vehicle_id) {
+            const veh = await VehicleModel.getVehicleById(booking.vehicle_id);
+            propertyName = `${veh?.make} ${veh?.model}` || "Vehicle";
+            if (!sellerId) sellerId = veh?.seller_id;
+            await VehicleModel.updateVehicleStatus(booking.vehicle_id, booking.booking_type.includes('purchase') ? 'sold' : 'rented');
+        }
+
+        // 5. Calculate & Record Commissions (10% System, 5% Agent)
+        const totalAmount = Number(booking.total_amount);
+        const systemCommission = totalAmount * 0.10;
+        let agentCommission = 0;
+
+        if (booking.agent_id) {
+            agentCommission = totalAmount * 0.05;
             await CommissionModel.createCommission({
+                booking_id: bookingId,
+                amount: agentCommission,
+                commission_type: 'agent',
                 agent_id: booking.agent_id,
-                booking_id: booking.id,
-                amount: commissionAmount,
+                status: 'pending'
             });
         }
 
-        res.status(200).json({ success: true, message: 'Payment confirmed and booking is now active!' });
+        await CommissionModel.createCommission({
+            booking_id: bookingId,
+            amount: systemCommission,
+            commission_type: 'system',
+            seller_id: sellerId,
+            status: 'approved'
+        });
+
+        const netAmount = totalAmount - systemCommission - agentCommission;
+
+        // 6. Notify Seller
+        if (sellerId) {
+            const sellerUsers = await query<any[]>('SELECT email FROM users WHERE id = (SELECT user_id FROM sellers WHERE id = ?)', [sellerId]);
+            if (sellerUsers.length > 0) {
+                await sendSaleConfirmationEmail(sellerUsers[0].email, {
+                    propertyName,
+                    amount: totalAmount,
+                    commission: systemCommission + agentCommission,
+                    netAmount: netAmount
+                });
+            }
+        }
+
+        res.status(200).json({ success: true, message: 'Payment confirmed and seller notified!' });
 
     } catch (error) {
+        console.error("PAYMENT_CONFIRM_ERROR:", error);
         next(error);
     }
 };
