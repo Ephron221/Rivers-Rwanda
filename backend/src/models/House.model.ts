@@ -3,12 +3,22 @@ import { RowDataPacket } from 'mysql2';
 
 export interface House extends RowDataPacket {
   id: string;
+  seller_id: string;
+  purpose: 'rent' | 'sale' | 'both';
   title: string;
   description: string;
-  size: string;
+  size_sqm: number;
   total_rooms: number;
   bedrooms: number;
   bathrooms: number;
+  balconies: number;
+  kitchen_type: 'inside' | 'outside' | 'both';
+  toilet_type: 'inside' | 'outside' | 'both';
+  material_used: 'block_sima' | 'ruriba' | 'mpunyu' | 'rukarakara' | 'other';
+  ceiling_type: 'plafond' | 'roof' | 'none';
+  has_tiles: boolean;
+  has_electricity: boolean;
+  has_water: boolean;
   has_parking: boolean;
   has_garden: boolean;
   has_wifi: boolean;
@@ -17,13 +27,10 @@ export interface House extends RowDataPacket {
   province: string;
   district: string;
   sector: string;
-  cell: string;
-  village: string;
   full_address: string;
   monthly_rent_price?: number;
   purchase_price?: number;
-  status: 'available' | 'under maintenance' | 'rented' | 'purchased';
-  contact_info: any;
+  status: 'pending_approval' | 'available' | 'under maintenance' | 'rented' | 'purchased' | 'rejected';
   created_at: Date;
 }
 
@@ -42,48 +49,61 @@ export const getAllHouses = async (filters: any): Promise<House[]> => {
   }
 
   if (filters.purpose === 'rent') {
-    sql += ' AND monthly_rent_price IS NOT NULL';
-  } else if (filters.purpose === 'purchase') {
-    sql += ' AND purchase_price IS NOT NULL';
+    sql += ' AND (purpose = \'rent\' OR purpose = \'both\')';
+  } else if (filters.purpose === 'purchase' || filters.purpose === 'sale') {
+    sql += ' AND (purpose = \'sale\' OR purpose = \'both\')';
   }
 
   return await query<House[]>(sql, params);
 };
 
 export const getHouseById = async (id: string): Promise<House | null> => {
-  const sql = 'SELECT * FROM houses WHERE id = ? AND status = \'available\'';
+  const sql = 'SELECT * FROM houses WHERE id = ?';
   const results = await query<House[]>(sql, [id]);
   return results[0] || null;
 };
 
 export const createHouse = async (data: any): Promise<string> => {
   const sql = `
-    INSERT INTO houses (id, seller_id, title, description, size, total_rooms, bedrooms, bathrooms, has_parking, has_garden, has_wifi, amenities, images, province, district, sector, cell, village, full_address, monthly_rent_price, purchase_price, status, contact_info)
-    VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO houses (
+      id, seller_id, purpose, title, description, size_sqm, total_rooms, 
+      bedrooms, bathrooms, balconies, kitchen_type, toilet_type, 
+      material_used, ceiling_type, has_tiles, has_electricity, 
+      has_water, has_parking, has_garden, has_wifi, 
+      amenities, images, province, district, sector, full_address, 
+      monthly_rent_price, purchase_price, status
+    )
+    VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   await query(sql, [
     data.seller_id,
+    data.purpose || 'rent',
     data.title,
     data.description,
-    data.size || null,
-    data.total_rooms,
-    data.bedrooms,
-    data.bathrooms,
-    data.has_parking,
-    data.has_garden,
-    data.has_wifi,
+    data.size_sqm || null,
+    data.total_rooms || 0,
+    data.bedrooms || 0,
+    data.bathrooms || 0,
+    data.balconies || 0,
+    data.kitchen_type || 'inside',
+    data.toilet_type || 'inside',
+    data.material_used || 'block_sima',
+    data.ceiling_type || 'plafond',
+    data.has_tiles ? 1 : 0,
+    data.has_electricity ? 1 : 0,
+    data.has_water ? 1 : 0,
+    data.has_parking ? 1 : 0,
+    data.has_garden ? 1 : 0,
+    data.has_wifi ? 1 : 0,
     data.amenities || JSON.stringify([]),
     data.images || JSON.stringify([]),
     data.province || null,
     data.district || null,
     data.sector || null,
-    data.cell || null,
-    data.village || null,
     data.full_address || null,
     data.monthly_rent_price || null,
     data.purchase_price || null,
-    'pending_approval',
-    data.contact_info || JSON.stringify({})
+    'pending_approval'
   ]);
   
   const result = await query<any[]>('SELECT id FROM houses ORDER BY created_at DESC LIMIT 1');
@@ -91,7 +111,7 @@ export const createHouse = async (data: any): Promise<string> => {
 };
 
 export const updateHouse = async (id: string, data: any): Promise<void> => {
-  const fields = Object.keys(data);
+  const fields = Object.keys(data).filter(f => f !== 'id');
   if (fields.length === 0) return;
 
   let sql = 'UPDATE houses SET ';

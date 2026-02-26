@@ -11,7 +11,18 @@ import {
   ChevronLeft, 
   Info,
   ShieldCheck,
-  XCircle
+  XCircle,
+  Layout,
+  Utensils,
+  Construction,
+  Zap,
+  Droplets,
+  Wifi,
+  Car,
+  TreePine,
+  Layers,
+  Grid3X3,
+  Ruler
 } from 'lucide-react';
 import BookingForm from '../../components/forms/BookingForm';
 import ImageGallery from '../../components/common/ImageGallery';
@@ -53,50 +64,162 @@ const HouseDetailPage = () => {
   const price = house.monthly_rent_price || house.purchase_price;
   const isAvailable = house.status === 'available';
 
+  const specs = [
+    { icon: <Bed size={20}/>, label: 'Bedrooms', value: `${house.bedrooms} beds` },
+    { icon: <Bath size={20}/>, label: 'Bathrooms', value: `${house.bathrooms} baths` },
+    { icon: <Ruler size={20}/>, label: 'Size', value: `${house.size_sqm || house.size} SQM` },
+    { icon: <Layout size={20}/>, label: 'Balconies', value: `${house.balconies || 0} units` },
+  ];
+
+  const structuralSpecs = [
+    { label: 'Construction', value: house.material_used?.replace('_', ' '), icon: <Construction size={18}/> },
+    { label: 'Ceiling', value: house.ceiling_type, icon: <Layers size={18}/> },
+    { label: 'Kitchen', value: house.kitchen_type + ' location', icon: <Utensils size={18}/> },
+    { label: 'Toilet', value: house.toilet_type + ' location', icon: <Info size={18}/> },
+  ];
+
+  const amenities = [
+    { id: 'has_tiles', label: 'Amakaro (Tiles)', icon: <Grid3X3 size={20}/>, active: house.has_tiles },
+    { id: 'has_electricity', label: 'Electricity', icon: <Zap size={20}/>, active: house.has_electricity },
+    { id: 'has_water', label: 'Water', icon: <Droplets size={20}/>, active: house.has_water },
+    { id: 'has_parking', label: 'Parking', icon: <Car size={20}/>, active: house.has_parking },
+    { id: 'has_garden', label: 'Garden', icon: <TreePine size={20}/>, active: house.has_garden },
+    { id: 'has_wifi', label: 'WiFi', icon: <Wifi size={20}/>, active: house.has_wifi },
+  ];
+
   return (
-    <div className="bg-light-gray min-h-screen pb-20 pt-28">
-      <div className="container mx-auto px-4">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-text-light hover:text-accent-orange transition-colors mb-8 group"><ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" /><span className="font-bold uppercase text-xs tracking-widest">Back to Listings</span></button>
+    <div className="bg-[#f8f9fa] min-h-screen pb-20 pt-28">
+      <div className="container mx-auto px-4 max-w-7xl">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-text-light hover:text-accent-orange transition-colors mb-10 bg-white px-6 py-3 rounded-2xl shadow-sm border border-gray-100 group w-fit">
+            <ChevronLeft size={18} strokeWidth={3} className="group-hover:-translate-x-1 transition-transform" />
+            <span className="font-black uppercase text-[10px] tracking-[0.2em]">Back to Listings</span>
+        </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-8 space-y-10">
-            <ImageGallery images={images} />
-            <div className="bg-white rounded-[2rem] p-8 md:p-12 shadow-sm border border-gray-100">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10 pb-10 border-b border-gray-50">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="bg-primary-dark/5 text-primary-dark px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest">{house.province}</span>
-                    <span className={`px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest ${isAvailable ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{house.status}</span>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-8 space-y-10">
+            <div className="rounded-[3rem] overflow-hidden shadow-2xl border-4 border-white">
+                <ImageGallery images={images} />
+            </div>
+
+            <div className="bg-white rounded-[3rem] p-10 md:p-14 shadow-xl border border-gray-50 space-y-12">
+              <div className="space-y-6">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="bg-accent-orange/10 text-accent-orange px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-accent-orange/20">
+                    House for {house.purpose?.toUpperCase() || (house.monthly_rent_price ? 'RENT' : 'SALE')}
+                  </span>
+                  <span className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border ${isAvailable ? 'bg-green-50 text-green-600 border-green-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
+                    {house.status.replace('_', ' ')}
+                  </span>
+                </div>
+                <h1 className="text-4xl md:text-6xl font-black text-primary-dark uppercase tracking-tighter leading-none">{house.title}</h1>
+                <div className="flex items-center gap-2 text-gray-400 font-bold text-sm uppercase tracking-wide">
+                  <MapPin size={18} className="text-accent-orange" />
+                  {house.full_address || `${house.sector}, ${house.district}, ${house.province}`}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-10 border-y border-gray-100">
+                {specs.map((spec, i) => (
+                  <div key={i} className="flex flex-col items-center gap-2 p-6 bg-gray-50 rounded-[2rem] text-center transition-all hover:bg-white hover:shadow-lg group">
+                    <div className="text-accent-orange transition-transform group-hover:scale-110">{spec.icon}</div>
+                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{spec.label}</span>
+                    <span className="text-sm font-black text-primary-dark uppercase">{spec.value}</span>
                   </div>
-                  <h1 className="text-4xl md:text-5xl font-black text-primary-dark uppercase tracking-tighter">{house.title}</h1>
+                ))}
+              </div>
+
+              <div className="space-y-8">
+                <div className="flex items-center gap-2">
+                    <Construction size={20} className="text-accent-orange" />
+                    <h3 className="text-xl font-black text-primary-dark uppercase tracking-widest">Building Specifications</h3>
                 </div>
-                <div className="text-left md:text-right">
-                  <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">{house.monthly_rent_price ? 'Monthly Rent' : 'Sale Price'}</p>
-                  <p className="text-3xl md:text-4xl font-black text-primary-dark tracking-tighter">Rwf {price?.toLocaleString()}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                    {structuralSpecs.map((s, i) => (
+                        <div key={i} className="flex items-center justify-between p-4 border-b border-gray-50">
+                            <div className="flex items-center gap-3">
+                                <div className="text-accent-orange opacity-60">{s.icon}</div>
+                                <span className="text-[11px] font-black uppercase tracking-widest text-gray-400">{s.label}</span>
+                            </div>
+                            <span className="text-xs font-black text-primary-dark uppercase tracking-tight">{s.value}</span>
+                        </div>
+                    ))}
                 </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">{[ { icon: <Bed />, label: 'Bedrooms', value: `${house.bedrooms} beds` }, { icon: <Bath />, label: 'Bathrooms', value: `${house.bathrooms} baths` }, { icon: <HomeIcon />, label: 'Size', value: `${house.size} sqm` }, { icon: <MapPin />, label: 'Location', value: house.district }, ].map((spec, i) => (<div key={i} className="space-y-2"><div className="text-accent-orange">{spec.icon}</div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{spec.label}</p><p className="font-bold text-primary-dark uppercase text-sm">{spec.value}</p></div>))}
+
+              <div className="space-y-8">
+                <h3 className="text-xl font-black text-primary-dark uppercase tracking-widest">Features & Facilities</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {amenities.map(item => (
+                        <div key={item.id} className={`flex items-center gap-4 p-5 rounded-2xl border transition-all ${item.active ? 'bg-white border-accent-orange/30 shadow-sm opacity-100' : 'bg-gray-50 border-transparent opacity-40 grayscale'}`}>
+                            <div className={item.active ? 'text-accent-orange' : 'text-gray-400'}>{item.icon}</div>
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${item.active ? 'text-primary-dark' : 'text-gray-400'}`}>{item.label}</span>
+                        </div>
+                    ))}
+                </div>
               </div>
-              <div className="prose prose-slate max-w-none"><div className="flex items-center gap-2 text-primary-dark mb-4"><Info size={20} className="text-accent-orange" /><h3 className="text-xl font-black uppercase tracking-tight m-0">Description</h3></div><p className="text-text-light leading-relaxed font-medium">{house.description || `A beautiful house located in the heart of ${house.district}.`}</p></div>
+
+              <div className="space-y-6">
+                <h3 className="text-xl font-black text-primary-dark uppercase tracking-widest m-0">About this house</h3>
+                <p className="text-gray-500 leading-relaxed font-medium text-lg">
+                    {house.description || "Experience the perfect blend of comfort and style in this stunning residence."}
+                </p>
+              </div>
             </div>
           </motion.div>
 
           <div className="lg:col-span-4">
-            <div className="sticky top-28 space-y-6">
-              <div className="bg-primary-dark text-white rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden">
+            <div className="sticky top-32 space-y-6">
+              <div className="bg-primary-dark text-white rounded-[3.5rem] p-10 md:p-14 shadow-2xl relative overflow-hidden border border-white/5">
                 <div className="absolute -top-24 -right-24 w-48 h-48 bg-accent-orange opacity-10 rounded-full blur-3xl"></div>
-                <h3 className="text-2xl font-black uppercase tracking-tighter mb-8 relative z-10">Secure This <span className="text-accent-orange">House</span></h3>
-                {isAvailable ? (
-                    !showBookingForm ? (<button onClick={() => setShowBookingForm(true)} className="w-full bg-accent-orange text-white font-black py-5 rounded-2xl uppercase tracking-[0.2em] text-xs hover:bg-white hover:text-primary-dark transition-all duration-500 shadow-xl relative z-10">{house.monthly_rent_price ? 'Book Rental Now' : 'Inquire Purchase'}</button>) : (<BookingForm item={house} itemType="house" />)
-                ) : (
-                    <div className="text-center bg-red-500/10 border border-red-500/20 text-red-300 rounded-2xl p-8">
-                        <XCircle className="mx-auto mb-4" size={40} />
-                        <h4 className="font-bold text-lg text-white mb-2">House Unavailable</h4>
-                        <p className="text-red-300/80 text-sm">This house has already been {house.status}. Please browse our other available options.</p>
+                
+                <div className="space-y-10 relative z-10">
+                    <div className="text-center space-y-2">
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Total Price</span>
+                        <div className="text-4xl md:text-5xl font-black text-accent-orange tracking-tighter">
+                            Rwf {price?.toLocaleString()}
+                        </div>
+                        <span className="text-[11px] font-bold uppercase text-gray-300 tracking-widest">
+                            {house.monthly_rent_price ? 'per month' : 'final price'}
+                        </span>
                     </div>
-                )}
+
+                    {isAvailable ? (
+                        !showBookingForm ? (
+                            <button onClick={() => setShowBookingForm(true)} className="w-full bg-accent-orange text-white font-black py-6 rounded-3xl uppercase tracking-[0.2em] text-xs hover:bg-white hover:text-primary-dark transition-all duration-500 shadow-2xl shadow-accent-orange/20 flex items-center justify-center gap-3">
+                                {house.monthly_rent_price ? 'Rent Now' : 'Buy Now'}
+                                <ChevronLeft size={18} className="rotate-180" />
+                            </button>
+                        ) : (
+                            <div className="bg-white/5 p-2 rounded-3xl"><BookingForm item={house} itemType="house" /></div>
+                        )
+                    ) : (
+                        <div className="text-center bg-red-500/10 border border-red-500/20 text-red-300 rounded-[2rem] p-8">
+                            <XCircle className="mx-auto mb-4" size={40} />
+                            <h4 className="font-black uppercase text-lg text-white mb-2">Unavailable</h4>
+                            <p className="text-red-300/80 text-xs font-bold uppercase tracking-tight tracking-wider leading-relaxed">This property is currently {house.status}.</p>
+                        </div>
+                    )}
+
+                    <div className="space-y-4 pt-6">
+                        <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            <ShieldCheck size={16} className="text-accent-orange" /> Verified Listing
+                        </div>
+                        <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            <Utensils size={16} className="text-accent-orange" /> Exclusive Agency
+                        </div>
+                    </div>
+                </div>
               </div>
-              <div className="bg-white rounded-[2rem] p-8 border border-gray-100 flex items-center gap-6 group hover:border-accent-orange transition-all cursor-pointer"><div className="bg-gray-50 p-4 rounded-2xl group-hover:bg-accent-orange group-hover:text-white transition-all text-accent-orange"><ShieldCheck size={28} /></div><div><p className="font-black text-primary-dark uppercase tracking-tight text-sm">Need Assistance?</p><p className="text-xs text-text-light font-bold">Chat with an expert agent</p></div></div>
+
+              <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 flex items-center gap-6 group hover:border-accent-orange transition-all cursor-pointer shadow-sm">
+                <div className="bg-gray-50 p-4 rounded-2xl group-hover:bg-accent-orange group-hover:text-white transition-all text-accent-orange">
+                    <ShieldCheck size={28} />
+                </div>
+                <div>
+                    <p className="font-black text-primary-dark uppercase tracking-tight text-xs">Need Help?</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase">Chat with an agent</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

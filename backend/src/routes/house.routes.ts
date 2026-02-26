@@ -14,9 +14,9 @@ const router = Router();
 router.get('/', getHouses);
 router.get('/:id', getHouse);
 
-// Admin only routes
-router.post('/', authenticate, authorize('admin'), uploadHouseImages, createHouse);
-router.patch('/:id', authenticate, authorize('admin'), uploadHouseImages, updateHouse);
-router.delete('/:id', authenticate, authorize('admin'), deleteHouse);
+// Admin and Seller routes
+router.post('/', authenticate, authorize('admin', 'seller'), uploadHouseImages, createHouse);
+router.patch('/:id', authenticate, authorize('admin', 'seller'), uploadHouseImages, updateHouse);
+router.delete('/:id', authenticate, authorize('admin', 'seller'), deleteHouse);
 
 export default router;

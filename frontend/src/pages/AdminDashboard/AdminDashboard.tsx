@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../services/api';
-import { Users, Home, Car, BookOpen, Plus, UserCheck } from 'lucide-react';
+import { Users, Home, Car, BookOpen, Plus, UserCheck, Building2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const AdminDashboard = () => {
@@ -8,6 +8,7 @@ const AdminDashboard = () => {
     users: 0,
     accommodations: 0,
     vehicles: 0,
+    houses: 0,
     bookings: 0
   });
   const [loading, setLoading] = useState(true);
@@ -34,8 +35,9 @@ const AdminDashboard = () => {
 
   const statCards = [
     { label: 'Total Users', value: stats.users, icon: <Users size={24} />, color: 'bg-blue-50 text-blue-600' },
-    { label: 'Accommodations', value: stats.accommodations, icon: <Home size={24} />, color: 'bg-green-50 text-green-600' },
+    { label: 'Accommodations', value: stats.accommodations, icon: <Building2 size={24} />, color: 'bg-green-50 text-green-600' },
     { label: 'Vehicles', value: stats.vehicles, icon: <Car size={24} />, color: 'bg-purple-50 text-purple-600' },
+    { label: 'Listed Houses', value: stats.houses || 0, icon: <Home size={24} />, color: 'bg-indigo-50 text-indigo-600' },
     { label: 'Total Bookings', value: stats.bookings, icon: <BookOpen size={24} />, color: 'bg-orange-50 text-accent-orange' },
   ];
 
@@ -46,7 +48,7 @@ const AdminDashboard = () => {
         <p className="text-text-light mt-2 font-medium">Manage your platform's resources and performance from a central hub.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {statCards.map((stat, index) => (
           <div key={index} className="bg-white p-6 rounded-3xl shadow-lg shadow-gray-200/40 border border-gray-50 flex items-center gap-5 hover:shadow-xl transition-all duration-300">
             <div className={`p-4 ${stat.color} rounded-2xl`}>
@@ -65,7 +67,7 @@ const AdminDashboard = () => {
            <div className="w-8 h-1 bg-accent-orange rounded-full"></div>
            Quick Platform Actions
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Link 
             to="/admin/accommodations" 
             className="flex items-center justify-between p-8 bg-white border border-gray-100 rounded-3xl hover:border-accent-orange hover:shadow-2xl hover:shadow-accent-orange/5 transition-all group"
@@ -74,7 +76,20 @@ const AdminDashboard = () => {
               <div className="p-3 bg-gray-50 text-gray-400 group-hover:bg-accent-orange group-hover:text-white transition-all rounded-xl">
                 <Plus size={20} />
               </div>
-              <span className="font-bold text-primary-dark uppercase text-xs tracking-widest">Add Accommodation</span>
+              <span className="font-bold text-primary-dark uppercase text-[10px] tracking-widest">Add Accommodation</span>
+            </div>
+            <Building2 size={20} className="text-gray-200 group-hover:text-accent-orange transition-colors" />
+          </Link>
+
+          <Link 
+            to="/admin/houses" 
+            className="flex items-center justify-between p-8 bg-white border border-gray-100 rounded-3xl hover:border-accent-orange hover:shadow-2xl hover:shadow-accent-orange/5 transition-all group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gray-50 text-gray-400 group-hover:bg-accent-orange group-hover:text-white transition-all rounded-xl">
+                <Plus size={20} />
+              </div>
+              <span className="font-bold text-primary-dark uppercase text-[10px] tracking-widest">Add New House</span>
             </div>
             <Home size={20} className="text-gray-200 group-hover:text-accent-orange transition-colors" />
           </Link>
@@ -87,7 +102,7 @@ const AdminDashboard = () => {
               <div className="p-3 bg-gray-50 text-gray-400 group-hover:bg-accent-orange group-hover:text-white transition-all rounded-xl">
                 <Plus size={20} />
               </div>
-              <span className="font-bold text-primary-dark uppercase text-xs tracking-widest">Add New Vehicle</span>
+              <span className="font-bold text-primary-dark uppercase text-[10px] tracking-widest">Add New Vehicle</span>
             </div>
             <Car size={20} className="text-gray-200 group-hover:text-accent-orange transition-colors" />
           </Link>
@@ -100,7 +115,7 @@ const AdminDashboard = () => {
               <div className="p-3 bg-gray-50 text-gray-400 group-hover:bg-accent-orange group-hover:text-white transition-all rounded-xl">
                 <UserCheck size={20} />
               </div>
-              <span className="font-bold text-primary-dark uppercase text-xs tracking-widest">Review Agents</span>
+              <span className="font-bold text-primary-dark uppercase text-[10px] tracking-widest">Review Agents</span>
             </div>
             <Users size={20} className="text-gray-200 group-hover:text-accent-orange transition-colors" />
           </Link>

@@ -8,16 +8,17 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware';
 const processRequestData = (body: any, files: any) => {
     const data = { ...body };
 
-    const booleanFields = ['has_parking', 'has_garden', 'has_wifi'];
+    const booleanFields = ['has_parking', 'has_garden', 'has_wifi', 'has_tiles', 'has_electricity', 'has_water'];
     booleanFields.forEach(field => {
         data[field] = ['true', true, 1, 'on'].includes(data[field]) ? 1 : 0;
     });
 
-    const numericFields = ['total_rooms', 'bedrooms', 'bathrooms'];
+    const numericFields = ['total_rooms', 'bedrooms', 'bathrooms', 'balconies'];
     numericFields.forEach(field => {
         data[field] = parseInt(data[field] || '0', 10);
     });
 
+    data.size_sqm = parseFloat(data.size_sqm) || null;
     data.monthly_rent_price = parseFloat(data.monthly_rent_price) > 0 ? parseFloat(data.monthly_rent_price) : null;
     data.purchase_price = parseFloat(data.purchase_price) > 0 ? parseFloat(data.purchase_price) : null;
 
@@ -79,11 +80,11 @@ export const createHouse = async (req: AuthenticatedRequest, res: Response, next
 
     const { agreed_to_commission } = req.body;
     if (!seller.agreed_to_commission && agreed_to_commission !== 'true' && agreed_to_commission !== true) {
-        return res.status(403).json({ success: false, message: 'You do not have permission to perform this action.' });
+        return res.status(403).json({ success: false, message: 'You must agree to the commission terms.' });
     }
 
     if (!seller.agreed_to_commission && (agreed_to_commission === 'true' || agreed_to_commission === true)) {
-        await SellerModel.updateSeller(sellerId, { agreed_to_commission: true } as Partial<SellerModel.Seller>);
+        await SellerModel.updateSeller(sellerId, { agreed_to_commission: true });
     }
 
     const sanitizedData = processRequestData(req.body, req.files);

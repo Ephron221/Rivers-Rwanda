@@ -86,7 +86,7 @@ CREATE TABLE sellers (
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB;
 
--- 6. ACCOMMODATIONS TABLE (Updated with new details)
+-- 6. ACCOMMODATIONS TABLE
 CREATE TABLE accommodations (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     seller_id CHAR(36) NOT NULL,
@@ -97,14 +97,14 @@ CREATE TABLE accommodations (
     city VARCHAR(100) NOT NULL,
     district VARCHAR(100) NOT NULL,
     street_address TEXT,
-    price_per_night DECIMAL(10,2),
-    price_per_event DECIMAL(10,2),
-    sale_price DECIMAL(10,2),
-    currency ENUM('RWF', 'USD') DEFAULT 'USD',
+    price_per_night DECIMAL(12,2), -- All prices in RWF
+    price_per_event DECIMAL(12,2), -- All prices in RWF
+    sale_price DECIMAL(12,2),      -- All prices in RWF
+    currency ENUM('RWF') DEFAULT 'RWF',
     bedrooms INT,
     bathrooms INT,
     max_guests INT,
-    capacity INT, -- for event halls
+    capacity INT,
     wifi BOOLEAN DEFAULT FALSE,
     parking BOOLEAN DEFAULT FALSE,
     garden BOOLEAN DEFAULT FALSE,
@@ -136,9 +136,9 @@ CREATE TABLE vehicles (
     transmission ENUM('automatic', 'manual') NOT NULL,
     fuel_type ENUM('petrol', 'diesel', 'electric', 'hybrid') NOT NULL,
     seating_capacity INT NOT NULL,
-    daily_rate DECIMAL(10,2),
-    sale_price DECIMAL(10,2),
-    currency ENUM('RWF', 'USD') DEFAULT 'USD',
+    daily_rate DECIMAL(12,2), -- All prices in RWF
+    sale_price DECIMAL(12,2), -- All prices in RWF
+    currency ENUM('RWF') DEFAULT 'RWF',
     features JSON,
     images JSON,
     status ENUM('pending_approval', 'available', 'rented', 'sold', 'maintenance', 'rejected') DEFAULT 'pending_approval',
@@ -155,18 +155,24 @@ CREATE TABLE vehicles (
 CREATE TABLE houses (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     seller_id CHAR(36) NOT NULL,
+    purpose ENUM('rent', 'sale', 'both') DEFAULT 'rent',
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    size VARCHAR(100),
+    size_sqm DECIMAL(10,2),
     total_rooms INT,
     bedrooms INT,
     bathrooms INT,
+    balconies INT DEFAULT 0,
+    kitchen_type ENUM('inside', 'outside', 'both') DEFAULT 'inside',
+    toilet_type ENUM('inside', 'outside', 'both') DEFAULT 'inside',
+    material_used ENUM('block_sima', 'ruriba', 'mpunyu', 'rukarakara', 'other') DEFAULT 'block_sima',
+    ceiling_type ENUM('plafond', 'roof', 'none') DEFAULT 'plafond',
+    has_tiles BOOLEAN DEFAULT FALSE,
+    has_electricity BOOLEAN DEFAULT TRUE,
+    has_water BOOLEAN DEFAULT TRUE,
     has_parking BOOLEAN DEFAULT FALSE,
     has_garden BOOLEAN DEFAULT FALSE,
     has_wifi BOOLEAN DEFAULT FALSE,
-    has_electricity BOOLEAN DEFAULT TRUE,
-    has_water BOOLEAN DEFAULT TRUE,
-    kitchen_type ENUM('inside', 'outside', 'both') DEFAULT 'inside',
     amenities JSON,
     images JSON,
     province VARCHAR(100),
@@ -175,15 +181,16 @@ CREATE TABLE houses (
     cell VARCHAR(100),
     village VARCHAR(100),
     full_address TEXT,
-    monthly_rent_price DECIMAL(10,2),
-    purchase_price DECIMAL(10,2),
-    currency ENUM('RWF', 'USD') DEFAULT 'RWF',
+    monthly_rent_price DECIMAL(12,2), -- All prices in RWF
+    purchase_price DECIMAL(12,2),     -- All prices in RWF
+    currency ENUM('RWF') DEFAULT 'RWF',
     status ENUM('pending_approval', 'available', 'under maintenance', 'rented', 'purchased', 'rejected') DEFAULT 'pending_approval',
     featured BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (seller_id) REFERENCES sellers(id) ON DELETE CASCADE,
     INDEX idx_status (status),
+    INDEX idx_purpose (purpose),
     INDEX idx_province_district (province, district)
 ) ENGINE=InnoDB;
 
@@ -200,7 +207,7 @@ CREATE TABLE bookings (
     house_id CHAR(36) NULL,
     start_date DATE,
     end_date DATE,
-    total_amount DECIMAL(10,2) NOT NULL,
+    total_amount DECIMAL(12,2) NOT NULL, -- All prices in RWF
     booking_status ENUM('pending', 'approved', 'confirmed', 'completed', 'cancelled', 'rejected') DEFAULT 'pending',
     payment_status ENUM('pending', 'paid', 'refunded') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -222,7 +229,7 @@ CREATE TABLE bookings (
 CREATE TABLE payments (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     booking_id CHAR(36) NOT NULL,
-    amount DECIMAL(10,2) NOT NULL,
+    amount DECIMAL(12,2) NOT NULL, -- All prices in RWF
     payment_method ENUM('bank_transfer', 'mobile_money', 'cash', 'other') NOT NULL,
     transaction_id VARCHAR(255),
     payment_proof_path VARCHAR(255),
@@ -239,7 +246,7 @@ CREATE TABLE commissions (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     agent_id CHAR(36) NOT NULL,
     booking_id CHAR(36) NOT NULL,
-    amount DECIMAL(10,2) NOT NULL,
+    amount DECIMAL(12,2) NOT NULL, -- All prices in RWF
     status ENUM('pending', 'approved', 'paid', 'cancelled') DEFAULT 'pending',
     earned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     paid_at TIMESTAMP NULL,

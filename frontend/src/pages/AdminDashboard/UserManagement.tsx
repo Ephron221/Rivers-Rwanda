@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
-import { Users, UserPlus, Shield, User, Trash2, Edit2, X, Check, Mail, ShieldAlert } from 'lucide-react';
+import { Users, UserPlus, Shield, User, Trash2, Edit2, X, Check, Mail, ShieldAlert, Store } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const UserManagement = () => {
@@ -153,6 +153,7 @@ const UserManagement = () => {
                 >
                   <option value="client">Client (Standard)</option>
                   <option value="agent">Field Agent</option>
+                  <option value="seller">Verified Seller</option>
                   <option value="admin">System Administrator</option>
                 </select>
               </div>
@@ -198,7 +199,8 @@ const UserManagement = () => {
                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-inner ${
                         user.role === 'admin' ? 'bg-purple-100 text-purple-600' :
                         user.role === 'agent' ? 'bg-orange-100 text-accent-orange' :
-                        'bg-blue-100 text-blue-600'
+                        user.role === 'seller' ? 'bg-blue-100 text-blue-600' :
+                        'bg-gray-100 text-gray-600'
                       }`}>
                         {user.email[0].toUpperCase()}
                       </div>
@@ -212,11 +214,13 @@ const UserManagement = () => {
                     <div className="flex items-center gap-2">
                       {user.role === 'admin' ? <Shield size={16} className="text-purple-600" /> : 
                        user.role === 'agent' ? <ShieldCheck size={16} className="text-accent-orange" /> : 
-                       <User size={16} className="text-blue-600" />}
+                       user.role === 'seller' ? <Store size={16} className="text-blue-600" /> :
+                       <User size={16} className="text-gray-600" />}
                       <span className={`text-xs font-black uppercase tracking-widest ${
                         user.role === 'admin' ? 'text-purple-600' :
                         user.role === 'agent' ? 'text-accent-orange' :
-                        'text-blue-600'
+                        user.role === 'seller' ? 'text-blue-600' :
+                        'text-gray-600'
                       }`}>
                         {user.role}
                       </span>
