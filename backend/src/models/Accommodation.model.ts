@@ -12,6 +12,15 @@ export interface Accommodation extends RowDataPacket {
   price_per_night?: number;
   price_per_event?: number;
   sale_price?: number;
+  max_guests?: number;
+  capacity?: number;
+  wifi: boolean;
+  parking: boolean;
+  garden: boolean;
+  decoration: boolean;
+  floor_number?: number;
+  has_elevator?: boolean;
+  is_furnished?: boolean;
   status: 'pending_approval' | 'available' | 'unavailable' | 'maintenance' | 'rejected';
   images: any;
   amenities: any;
@@ -56,9 +65,11 @@ export const createAccommodation = async (data: any): Promise<string> => {
     INSERT INTO accommodations (
       id, seller_id, type, purpose, name, description, 
       city, district, price_per_night, price_per_event, sale_price,
+      max_guests, capacity, wifi, parking, garden, decoration,
+      floor_number, has_elevator, is_furnished,
       status, images, amenities
     )
-    VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   await query(sql, [
     data.seller_id,
@@ -71,6 +82,15 @@ export const createAccommodation = async (data: any): Promise<string> => {
     data.price_per_night || null,
     data.price_per_event || null,
     data.sale_price || null,
+    data.max_guests || null,
+    data.capacity || null,
+    data.wifi ? 1 : 0,
+    data.parking ? 1 : 0,
+    data.garden ? 1 : 0,
+    data.decoration ? 1 : 0,
+    data.floor_number || null,
+    data.has_elevator ? 1 : 0,
+    data.is_furnished ? 1 : 0,
     'pending_approval',
     data.images || JSON.stringify([]),
     data.amenities || JSON.stringify([])

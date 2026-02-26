@@ -14,9 +14,9 @@ const router = Router();
 router.get('/', getAccommodations);
 router.get('/:id', getAccommodation);
 
-// Admin only routes
-router.post('/', authenticate, authorize('admin'), uploadAccommodationImages, createAccommodation);
-router.patch('/:id', authenticate, authorize('admin'), uploadAccommodationImages, updateAccommodation);
-router.delete('/:id', authenticate, authorize('admin'), deleteAccommodation);
+// Seller and Admin routes
+router.post('/', authenticate, authorize('seller', 'admin'), uploadAccommodationImages, createAccommodation);
+router.patch('/:id', authenticate, authorize('seller', 'admin'), uploadAccommodationImages, updateAccommodation);
+router.delete('/:id', authenticate, authorize('seller', 'admin'), deleteAccommodation);
 
 export default router;

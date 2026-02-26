@@ -4,7 +4,7 @@
 CREATE DATABASE IF NOT EXISTS rivers_rwanda CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE rivers_rwanda;
 
--- 1. USERS TABLE (Corrected Role ENUM)
+-- 1. USERS TABLE
 CREATE TABLE users (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE users (
     INDEX idx_status (status)
 ) ENGINE=InnoDB;
 
--- 2. OTPS TABLE (One-Time Passwords)
+-- 2. OTPS TABLE
 CREATE TABLE otps (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     user_id CHAR(36) NOT NULL,
@@ -57,6 +57,7 @@ CREATE TABLE agents (
     national_id VARCHAR(16) UNIQUE,
     profile_image VARCHAR(255),
     business_name VARCHAR(255),
+    referral_code VARCHAR(50) UNIQUE,
     status ENUM('pending', 'approved', 'rejected', 'suspended') DEFAULT 'pending',
     commission_rate DECIMAL(5,2) DEFAULT 5.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -85,11 +86,12 @@ CREATE TABLE sellers (
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB;
 
--- 6. ACCOMMODATIONS TABLE
+-- 6. ACCOMMODATIONS TABLE (Updated with new details)
 CREATE TABLE accommodations (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     seller_id CHAR(36) NOT NULL,
     type ENUM('apartment', 'hotel_room', 'event_hall') NOT NULL,
+    purpose ENUM('rent', 'sale', 'both') DEFAULT 'rent',
     name VARCHAR(255) NOT NULL,
     description TEXT,
     city VARCHAR(100) NOT NULL,
@@ -97,11 +99,19 @@ CREATE TABLE accommodations (
     street_address TEXT,
     price_per_night DECIMAL(10,2),
     price_per_event DECIMAL(10,2),
+    sale_price DECIMAL(10,2),
     currency ENUM('RWF', 'USD') DEFAULT 'USD',
     bedrooms INT,
     bathrooms INT,
     max_guests INT,
     capacity INT, -- for event halls
+    wifi BOOLEAN DEFAULT FALSE,
+    parking BOOLEAN DEFAULT FALSE,
+    garden BOOLEAN DEFAULT FALSE,
+    decoration BOOLEAN DEFAULT FALSE,
+    floor_number INT,
+    has_elevator BOOLEAN DEFAULT FALSE,
+    is_furnished BOOLEAN DEFAULT FALSE,
     amenities JSON,
     images JSON,
     status ENUM('pending_approval', 'available', 'unavailable', 'maintenance', 'rejected') DEFAULT 'pending_approval',
@@ -183,8 +193,8 @@ CREATE TABLE bookings (
     booking_type ENUM('accommodation', 'vehicle_rent', 'vehicle_purchase', 'house_rent', 'house_purchase') NOT NULL,
     booking_reference VARCHAR(20) UNIQUE NOT NULL,
     client_id CHAR(36) NOT NULL,
-    seller_id CHAR(36) NULL, -- Can be null if booked via agent
-    agent_id CHAR(36) NULL, -- Can be null if booked directly
+    seller_id CHAR(36) NULL,
+    agent_id CHAR(36) NULL,
     accommodation_id CHAR(36) NULL,
     vehicle_id CHAR(36) NULL,
     house_id CHAR(36) NULL,
@@ -224,7 +234,7 @@ CREATE TABLE payments (
     INDEX idx_status (status)
 ) ENGINE=InnoDB;
 
--- 11. COMMISSIONS TABLE (For Agents)
+-- 11. COMMISSIONS TABLE
 CREATE TABLE commissions (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     agent_id CHAR(36) NOT NULL,

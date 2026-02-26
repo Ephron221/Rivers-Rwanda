@@ -19,9 +19,17 @@ export interface Seller extends RowDataPacket {
 }
 
 export const createSeller = async (sellerData: any): Promise<string> => {
-    const sql = 'INSERT INTO sellers (user_id, first_name, last_name, phone_number, national_id) VALUES (UUID(), ?, ?, ?, ?, ?)';
-    const result = await query(sql, [sellerData.user_id, sellerData.first_name, sellerData.last_name, sellerData.phone_number, sellerData.national_id]);
-    return (result as any).insertId;
+    const sql = 'INSERT INTO sellers (id, user_id, first_name, last_name, phone_number, national_id, status) VALUES (UUID(), ?, ?, ?, ?, ?, "pending")';
+    await query(sql, [
+        sellerData.user_id, 
+        sellerData.first_name, 
+        sellerData.last_name, 
+        sellerData.phone_number, 
+        sellerData.national_id
+    ]);
+    
+    const result = await query<any[]>('SELECT id FROM sellers WHERE user_id = ?', [sellerData.user_id]);
+    return result[0].id;
 };
 
 export const findSellerById = async (id: string): Promise<Seller | null> => {
@@ -30,7 +38,7 @@ export const findSellerById = async (id: string): Promise<Seller | null> => {
   return results[0] || null;
 };
 
-export const updateSeller = async (id: string, data: Partial<Seller>): Promise<void> => {
+export const updateSeller = async (id: string, data: any): Promise<void> => {
   const fields = Object.keys(data);
   if (fields.length === 0) return;
 
@@ -38,9 +46,8 @@ export const updateSeller = async (id: string, data: Partial<Seller>): Promise<v
   const params: any[] = [];
   
   fields.forEach((field, index) => {
-    const key = field as keyof Partial<Seller>;
-    sql += `${key} = ?${index === fields.length - 1 ? '' : ', '}`;
-    params.push(data[key]);
+    sql += `${field} = ?${index === fields.length - 1 ? '' : ', '}`;
+    params.push(data[field]);
   });
   
   sql += ' WHERE id = ?';

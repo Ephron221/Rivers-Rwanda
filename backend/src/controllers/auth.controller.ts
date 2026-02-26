@@ -6,41 +6,55 @@ import { createOtp, sendOtpEmail } from '../utils/otp.util';
 import { v4 as uuidv4 } from 'uuid';
 import { query } from '../database/connection';
 
-// --- USER REGISTRATION WITH OTP --- 
 export const register = async (req: Request, res: Response, next: NextFunction) => {
   const { fullName, email, phone, password, role, nationalId } = req.body;
 
   if (!fullName || !email || !phone || !password || !role) {
     return res.status(400).json({ success: false, message: 'All fields are required.' });
   }
-  if (role === 'agent' && !nationalId) {
-    return res.status(400).json({ success: false, message: 'National ID is required for agents.' });
+
+  // Specialized validation for agents and sellers
+  if ((role === 'agent' || role === 'seller') && !nationalId) {
+    return res.status(400).json({ success: false, message: `National ID is required for ${role}s.` });
   }
 
   const connection = await pool.getConnection();
 
   try {
     await connection.beginTransaction();
-    const [existingUser] = await connection.execute<any[]>('SELECT id FROM users WHERE email = ? OR id IN (SELECT user_id FROM clients WHERE phone_number = ?) OR id IN (SELECT user_id FROM agents WHERE phone_number = ?)', [email, phone, phone]);
+
+    // Check if user already exists
+    const [existingUser] = await connection.execute<any[]>(
+        'SELECT id FROM users WHERE email = ?', [email]
+    );
+    
     if (existingUser.length > 0) {
         await connection.rollback();
-        return res.status(409).json({ success: false, message: 'An account with this email or phone number already exists.' });
+        return res.status(409).json({ success: false, message: 'An account with this email already exists.' });
     }
 
     const hashedPassword = await hashPassword(password);
     const userId = uuidv4();
 
+    // 1. Create User
     await connection.execute('INSERT INTO users (id, email, password_hash, role, status) VALUES (?, ?, ?, ?, ?)', [
       userId, email, hashedPassword, role, 'pending'
     ]);
 
-    const [firstName, ...lastName] = fullName.split(' ');
+    const nameParts = fullName.trim().split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ') || ' ';
+
+    // 2. Create Profile based on Role
     if (role === 'client') {
-      await connection.execute('INSERT INTO clients (user_id, first_name, last_name, phone_number) VALUES (?, ?, ?, ?)', [userId, firstName, lastName.join(' ') || ' ', phone]);
-    } else {
-      await connection.execute('INSERT INTO agents (user_id, first_name, last_name, phone_number, national_id) VALUES (?, ?, ?, ?, ?)', [userId, firstName, lastName.join(' ') || ' ', phone, nationalId]);
+      await connection.execute('INSERT INTO clients (id, user_id, first_name, last_name, phone_number) VALUES (UUID(), ?, ?, ?, ?)', [userId, firstName, lastName, phone]);
+    } else if (role === 'agent') {
+      await connection.execute('INSERT INTO agents (id, user_id, first_name, last_name, phone_number, national_id) VALUES (UUID(), ?, ?, ?, ?, ?)', [userId, firstName, lastName, phone, nationalId]);
+    } else if (role === 'seller') {
+      await connection.execute('INSERT INTO sellers (id, user_id, first_name, last_name, phone_number, national_id, status) VALUES (UUID(), ?, ?, ?, ?, ?, "pending")', [userId, firstName, lastName, phone, nationalId]);
     }
 
+    // 3. Handle OTP
     const otp = await createOtp(userId, 'email_verification', connection);
     await sendOtpEmail(email, otp);
     
@@ -60,7 +74,6 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
   }
 };
 
-// --- EMAIL VERIFICATION WITH OTP ---
 export const verifyEmail = async (req: Request, res: Response, next: NextFunction) => {
     const { userId, otp } = req.body;
     if (!userId || !otp) {
@@ -84,7 +97,6 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     }
 };
 
-// --- LOGIN (UPDATED) ---
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -96,13 +108,13 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
     if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials.' });
 
     if (user.status !== 'active' || !user.email_verified) {
-        return res.status(401).json({ success: false, message: 'Account not active or email not verified. Please verify your email first.', needsVerification: true, userId: user.id });
+        return res.status(401).json({ success: false, message: 'Account not active or email not verified.', needsVerification: true, userId: user.id });
     }
 
     const isMatch = await comparePassword(password, user.password_hash);
     if (!isMatch) return res.status(401).json({ success: false, message: 'Invalid credentials.' });
 
-    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET || 'your_default_secret', { expiresIn: '24h' });
+    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET || 'your_secret', { expiresIn: '24h' });
 
     res.status(200).json({ 
         success: true, 
@@ -115,80 +127,44 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
   }
 };
 
-// --- RESEND OTP ---
 export const resendOtp = async (req: Request, res: Response, next: NextFunction) => {
   const { userId } = req.body;
-  if (!userId) {
-    return res.status(400).json({ success: false, message: 'User ID is required.' });
-  }
-
   try {
-    const [user] = await query<any[]>('SELECT * FROM users WHERE id = ?', [userId]);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
-
-    if (user.status === 'active' && user.email_verified) {
-      return res.status(400).json({ success: false, message: 'This account is already active and verified.' });
-    }
-
+    const [user] = await query<any[]>('SELECT email FROM users WHERE id = ?', [userId]);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
     const otp = await createOtp(userId, 'email_verification', pool);
     await sendOtpEmail(user.email, otp);
-
-    res.status(200).json({ success: true, message: 'A new OTP has been sent to your email address.' });
-
-  } catch (error) {
-    next(error);
-  }
+    res.status(200).json({ success: true, message: 'OTP has been resent.' });
+  } catch (error) { next(error); }
 };
 
-
-// --- PASSWORD RESET --- 
 export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ success: false, message: 'Email is required.'});
-
     try {
-        const [user] = await query<any[]>('SELECT * FROM users WHERE email = ?', [email]);
-        if (!user) {
-            // Still send a success response to prevent user enumeration attacks
-            return res.status(200).json({ success: true, message: 'If an account with that email exists, a password reset OTP has been sent.' });
+        const [user] = await query<any[]>('SELECT id FROM users WHERE email = ?', [email]);
+        if (user) {
+            const otp = await createOtp(user.id, 'password_reset', pool);
+            await sendOtpEmail(email, otp);
         }
-
-        const otp = await createOtp(user.id, 'password_reset', pool);
-        await sendOtpEmail(email, otp);
-
-        res.status(200).json({ success: true, message: 'If an account with that email exists, a password reset OTP has been sent.' });
-
-    } catch (error) {
-        next(error);
-    }
+        res.status(200).json({ success: true, message: 'If an account exists, an OTP has been sent.' });
+    } catch (error) { next(error); }
 }
 
 export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
     const { email, otp, newPassword } = req.body;
-    if (!email || !otp || !newPassword) {
-        return res.status(400).json({ success: false, message: 'Email, OTP, and new password are required.' });
-    }
-
     try {
-        const [user] = await query<any[]>('SELECT * FROM users WHERE email = ?', [email]);
+        const [user] = await query<any[]>('SELECT id FROM users WHERE email = ?', [email]);
         if (!user) return res.status(400).json({ success: false, message: 'Invalid email or OTP.' });
 
         const [otpRecord] = await query<any[]>('SELECT * FROM otps WHERE user_id = ? AND otp_code = ? AND purpose = \'password_reset\' ORDER BY created_at DESC LIMIT 1', [user.id, otp]);
-
-        if (!otpRecord) return res.status(400).json({ success: false, message: 'Invalid OTP.' });
-        if (otpRecord.is_used) return res.status(400).json({ success: false, message: 'This OTP has already been used.' });
-        if (new Date() > new Date(otpRecord.expires_at)) return res.status(400).json({ success: false, message: 'This OTP has expired.' });
+        if (!otpRecord || otpRecord.is_used || new Date() > new Date(otpRecord.expires_at)) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
+        }
 
         await query('UPDATE otps SET is_used = TRUE WHERE id = ?', [otpRecord.id]);
-        
         const hashedPassword = await hashPassword(newPassword);
         await query('UPDATE users SET password_hash = ? WHERE id = ?', [hashedPassword, user.id]);
 
-        res.status(200).json({ success: true, message: 'Password has been reset successfully. You can now log in with your new password.' });
-
-    } catch (error) {
-        next(error);
-    }
+        res.status(200).json({ success: true, message: 'Password reset successfully.' });
+    } catch (error) { next(error); }
 }

@@ -94,18 +94,35 @@ export const getSellerProducts = async (req: AuthenticatedRequest, res: Response
         const sellerId = await UserModel.getSellerIdByUserId(userId);
 
         if (!sellerId) {
-            return res.status(403).json({ success: false, message: 'User is not a valid seller.' });
+            return res.status(200).json({ success: true, data: [] });
         }
 
-        const houses = await query("SELECT id, title as name, 'house' as type, status, created_at FROM houses WHERE seller_id = ?", [sellerId]);
-        const accommodations = await query("SELECT id, name, type, status, created_at FROM accommodations WHERE seller_id = ?", [sellerId]);
-        const vehicles = await query("SELECT id, CONCAT(make, ' ', model) as name, 'vehicle' as type, status, created_at FROM vehicles WHERE seller_id = ?", [sellerId]);
+        // Updated queries to include 'purpose' and ensure consistent naming
+        // For houses, we determine purpose based on price availability
+        const houses = await query(`
+            SELECT id, title as name, 'house' as type, 
+            CASE WHEN monthly_rent_price IS NOT NULL AND purchase_price IS NOT NULL THEN 'both'
+                 WHEN purchase_price IS NOT NULL THEN 'sale'
+                 ELSE 'rent' END as purpose,
+            status, created_at FROM houses WHERE seller_id = ?
+        `, [sellerId]);
+
+        const accommodations = await query("SELECT id, name, type, purpose, status, created_at FROM accommodations WHERE seller_id = ?", [sellerId]);
+        
+        const vehicles = await query("SELECT id, CONCAT(make, ' ', model) as name, 'vehicle' as type, purpose, status, created_at FROM vehicles WHERE seller_id = ?", [sellerId]);
 
         const allProducts = [...(houses as any[]), ...(accommodations as any[]), ...(vehicles as any[])];
-        allProducts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
+        // Sort by date: most recent first
+        allProducts.sort((a, b) => {
+            const dateA = new Date(a.created_at).getTime();
+            const dateB = new Date(b.created_at).getTime();
+            return dateB - dateA;
+        });
 
         res.status(200).json({ success: true, data: allProducts });
     } catch (error) {
+        console.error('[GET_SELLER_PRODUCTS_ERROR]:', error);
         next(error);
     }
 };
