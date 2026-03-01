@@ -4,7 +4,7 @@ import {
   approveAgent, 
   rejectAgent, 
   getAllBookings, 
-  approveBooking, // Import the new function
+  approveBooking,
   updateBookingStatus, 
   deleteBooking, 
   verifyBookingPayment, 
@@ -16,11 +16,15 @@ import {
   getAllSellers,
   approveSeller,
   rejectSeller,
+  updateSellerProfile,
+  deleteSeller,
   getPendingProducts,
   approveProduct,
   rejectProduct,
-  getAllCommissions, // New
-  markCommissionAsPaid // New
+  deleteProduct,
+  getAllCommissions,
+  markCommissionAsPaid,
+  deleteCommission
 } from '../controllers/admin.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
 
@@ -46,11 +50,14 @@ router.patch('/agents/:id/reject', rejectAgent);
 router.get('/sellers', getAllSellers);
 router.patch('/sellers/:id/approve', approveSeller);
 router.patch('/sellers/:id/reject', rejectSeller);
+router.patch('/sellers/:id', updateSellerProfile);
+router.delete('/sellers/:id', deleteSeller);
 
 // Product Management
 router.get('/products/pending', getPendingProducts);
 router.patch('/products/:type/:id/approve', approveProduct);
 router.patch('/products/:type/:id/reject', rejectProduct);
+router.delete('/products/:type/:id', deleteProduct);
 
 // Booking & Payment Management
 router.get('/bookings', getAllBookings);
@@ -62,5 +69,6 @@ router.patch('/bookings/:bookingId/verify-payment', verifyBookingPayment);
 // Commission & Payout Management
 router.get('/commissions', getAllCommissions);
 router.patch('/commissions/:id/pay', markCommissionAsPaid);
+router.delete('/commissions/:id', deleteCommission);
 
 export default router;

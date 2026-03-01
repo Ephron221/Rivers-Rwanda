@@ -16,16 +16,31 @@ export const getAllUsers = async (req: Request, res: Response, next: NextFunctio
 
 export const createAdminUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password, role } = req.body;
+    const { email, password, role, firstName, lastName, phoneNumber, nationalId } = req.body;
     const hashedPassword = await hashPassword(password);
-    await UserModel.createUser({
+    
+    // 1. Create the base user
+    const userId = await UserModel.createUser({
       email,
       password_hash: hashedPassword,
       role: role || 'client',
       status: 'active'
     });
+
+    // 2. Create the appropriate profile based on role
+    if (role === 'seller') {
+        const sql = 'INSERT INTO sellers (id, user_id, first_name, last_name, phone_number, national_id, status) VALUES (UUID(), ?, ?, ?, ?, ?, "approved")';
+        await query(sql, [userId, firstName, lastName, phoneNumber, nationalId]);
+    } else if (role === 'agent') {
+        const sql = 'INSERT INTO agents (id, user_id, first_name, last_name, phone_number, national_id, status) VALUES (UUID(), ?, ?, ?, ?, ?, "approved")';
+        await query(sql, [userId, firstName, lastName, phoneNumber, nationalId]);
+    } else if (role === 'client') {
+        await UserModel.createClientProfile(userId, { firstName, lastName, phoneNumber });
+    }
+
     res.status(201).json({ success: true, message: 'User created successfully' });
   } catch (error) {
+    console.error('[CREATE_USER_ERROR]:', error);
     next(error);
   }
 };
@@ -94,7 +109,12 @@ export const rejectAgent = async (req: Request, res: Response, next: NextFunctio
 
 export const getAllSellers = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const sql = 'SELECT * FROM sellers';
+        const sql = `
+            SELECT s.*, u.email, u.status as user_status 
+            FROM sellers s
+            JOIN users u ON s.user_id = u.id
+            ORDER BY s.created_at DESC
+        `;
         const sellers = await query(sql);
         res.status(200).json({ success: true, data: sellers });
     } catch (error) {
@@ -128,16 +148,81 @@ export const rejectSeller = async (req: Request, res: Response, next: NextFuncti
     }
 };
 
+export const updateSellerProfile = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { id } = req.params;
+        const { firstName, lastName, phoneNumber, nationalId, businessName } = req.body;
+        
+        const sql = `
+            UPDATE sellers 
+            SET first_name = ?, last_name = ?, phone_number = ?, national_id = ?, business_name = ?
+            WHERE id = ?
+        `;
+        await query(sql, [firstName, lastName, phoneNumber, nationalId, businessName, id]);
+        
+        res.status(200).json({ success: true, message: 'Seller profile updated successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const deleteSeller = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { id } = req.params;
+        const sql = 'DELETE FROM users WHERE id = (SELECT user_id FROM sellers WHERE id = ?)';
+        await query(sql, [id]);
+        res.status(200).json({ success: true, message: 'Seller account deleted successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const getPendingProducts = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const houses = await query("SELECT id, title as name, 'house' as type, created_at FROM houses WHERE status = 'pending_approval'");
-    const accommodations = await query("SELECT id, name, type, created_at FROM accommodations WHERE status = 'pending_approval'");
-    const vehicles = await query("SELECT id, CONCAT(make, ' ', model) as name, 'vehicle' as type, created_at FROM vehicles WHERE status = 'pending_approval'");
+    // 1. Houses
+    const housesSql = `
+        SELECT h.id, h.title as name, 'house' as type, h.created_at, h.images, h.status,
+               s.first_name, s.last_name, u.email, s.phone_number
+        FROM houses h
+        LEFT JOIN sellers s ON h.seller_id = s.id
+        LEFT JOIN users u ON h.user_id = u.id -- Potentially incorrect, linked via sellers table usually
+        OR h.seller_id = s.id
+        WHERE h.status IN ('pending_approval', 'available', 'rented', 'purchased')
+    `;
+    // Note: Re-corrected SQL to ensure joins are robust
+    const houses = await query(`
+        SELECT h.id, h.title as name, 'house' as type, h.created_at, h.images, h.status,
+               s.first_name, s.last_name, u.email, s.phone_number
+        FROM houses h
+        LEFT JOIN sellers s ON h.seller_id = s.id
+        LEFT JOIN users u ON s.user_id = u.id
+        WHERE h.status IN ('pending_approval', 'available', 'rented', 'purchased')
+    `);
 
-    const pendingProducts = [...(houses as any[]), ...(accommodations as any[]), ...(vehicles as any[])];
-    pendingProducts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    // 2. Accommodations
+    const accommodations = await query(`
+        SELECT a.id, a.name, a.type, a.created_at, a.images, a.status,
+               s.first_name, s.last_name, u.email, s.phone_number
+        FROM accommodations a
+        LEFT JOIN sellers s ON a.seller_id = s.id
+        LEFT JOIN users u ON s.user_id = u.id
+        WHERE a.status IN ('pending_approval', 'available', 'unavailable')
+    `);
 
-    res.status(200).json({ success: true, data: pendingProducts });
+    // 3. Vehicles
+    const vehicles = await query(`
+        SELECT v.id, CONCAT(v.make, ' ', v.model) as name, 'vehicle' as type, v.created_at, v.images, v.status,
+               s.first_name, s.last_name, u.email, s.phone_number
+        FROM vehicles v
+        LEFT JOIN sellers s ON v.seller_id = s.id
+        LEFT JOIN users u ON s.user_id = u.id
+        WHERE v.status IN ('pending_approval', 'available', 'rented', 'sold')
+    `);
+
+    const products = [...(houses as any[]), ...(accommodations as any[]), ...(vehicles as any[])];
+    products.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    res.status(200).json({ success: true, data: products });
   } catch (error) {
     next(error);
   }
@@ -159,14 +244,8 @@ export const approveProduct = async (req: Request, res: Response, next: NextFunc
   try {
     const { type, id } = req.params;
     const tableName = getTableNameFromType(type);
-
-    if (!tableName) {
-        return res.status(400).json({ success: false, message: 'Invalid product type' });
-    }
-
-    const sql = `UPDATE ${tableName} SET status = 'available' WHERE id = ?`;
-    await query(sql, [id]);
-
+    if (!tableName) return res.status(400).json({ success: false, message: 'Invalid product type' });
+    await query(`UPDATE ${tableName} SET status = 'available' WHERE id = ?`, [id]);
     res.status(200).json({ success: true, message: `Product approved successfully` });
   } catch (error) {
     next(error);
@@ -177,18 +256,39 @@ export const rejectProduct = async (req: Request, res: Response, next: NextFunct
   try {
     const { type, id } = req.params;
     const tableName = getTableNameFromType(type);
-
-    if (!tableName) {
-        return res.status(400).json({ success: false, message: 'Invalid product type' });
-    }
-
-    const sql = `UPDATE ${tableName} SET status = 'rejected' WHERE id = ?`;
-    await query(sql, [id]);
-
+    if (!tableName) return res.status(400).json({ success: false, message: 'Invalid product type' });
+    await query(`UPDATE ${tableName} SET status = 'rejected' WHERE id = ?`, [id]);
     res.status(200).json({ success: true, message: `Product rejected` });
   } catch (error) {
     next(error);
   }
+};
+
+export const deleteProduct = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { type, id } = req.params;
+        const tableName = getTableNameFromType(type);
+        if (!tableName) return res.status(400).json({ success: false, message: 'Invalid product type' });
+
+        const [product] = await query<any[]>(`SELECT status FROM ${tableName} WHERE id = ?`, [id]);
+        if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+
+        const isFinished = ['rented', 'purchased', 'sold', 'unavailable'].includes(product.status);
+
+        if (!isFinished) {
+            const idKey = type === 'house' ? 'house_id' : type === 'vehicle' ? 'vehicle_id' : 'accommodation_id';
+            const [booking] = await query<any[]>(`SELECT id FROM bookings WHERE ${idKey} = ? LIMIT 1`, [id]);
+            if (booking) return res.status(403).json({ success: false, message: "Cannot delete this property because it is still in process or has active bookings." });
+        }
+
+        const idKey = type === 'house' ? 'house_id' : type === 'vehicle' ? 'vehicle_id' : 'accommodation_id';
+        await query(`UPDATE bookings SET ${idKey} = NULL WHERE ${idKey} = ?`, [id]);
+        await query(`DELETE FROM ${tableName} WHERE id = ?`, [id]);
+        
+        res.status(200).json({ success: true, message: 'Product deleted successfully' });
+    } catch (error) {
+        next(error);
+    }
 };
 
 export const getAllBookings = async (req: Request, res: Response, next: NextFunction) => {
@@ -308,4 +408,14 @@ export const markCommissionAsPaid = async (req: Request, res: Response, next: Ne
   } catch (error) {
     next(error);
   }
+};
+
+export const deleteCommission = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { id } = req.params;
+        await query('DELETE FROM commissions WHERE id = ?', [id]);
+        res.status(200).json({ success: true, message: 'Commission record deleted successfully' });
+    } catch (error) {
+        next(error);
+    }
 };
