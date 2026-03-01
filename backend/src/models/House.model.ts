@@ -3,7 +3,7 @@ import { RowDataPacket } from 'mysql2';
 
 export interface House extends RowDataPacket {
   id: string;
-  seller_id: string;
+  seller_id: string | null;
   purpose: 'rent' | 'sale' | 'both';
   title: string;
   description: string;
@@ -35,8 +35,17 @@ export interface House extends RowDataPacket {
 }
 
 export const getAllHouses = async (filters: any): Promise<House[]> => {
-  let sql = 'SELECT * FROM houses WHERE status = \'available\'';
+  let sql = 'SELECT * FROM houses WHERE 1=1'; 
   const params: any[] = [];
+
+  if (filters.status) {
+      sql += ' AND status = ?';
+      params.push(filters.status);
+  } else {
+      // Show all active/visible statuses but hide rejected or purely pending ones if necessary
+      // For now, let's show available, rented, purchased, and under maintenance
+      sql += " AND status IN ('available', 'rented', 'purchased', 'under maintenance')";
+  }
 
   if (filters.province) {
     sql += ' AND province = ?';
@@ -54,6 +63,8 @@ export const getAllHouses = async (filters: any): Promise<House[]> => {
     sql += ' AND (purpose = \'sale\' OR purpose = \'both\')';
   }
 
+  sql += ' ORDER BY created_at DESC';
+
   return await query<House[]>(sql, params);
 };
 
@@ -62,6 +73,9 @@ export const getHouseById = async (id: string): Promise<House | null> => {
   const results = await query<House[]>(sql, [id]);
   return results[0] || null;
 };
+
+// Helper to strictly convert any value to 1 or 0 for MySQL TINYINT
+const toInt = (val: any) => (['true', true, 1, '1', 'on'].includes(val) ? 1 : 0);
 
 export const createHouse = async (data: any): Promise<string> => {
   const sql = `
@@ -75,8 +89,9 @@ export const createHouse = async (data: any): Promise<string> => {
     )
     VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
+  
   await query(sql, [
-    data.seller_id,
+    data.seller_id || null,
     data.purpose || 'rent',
     data.title,
     data.description,
@@ -89,12 +104,12 @@ export const createHouse = async (data: any): Promise<string> => {
     data.toilet_type || 'inside',
     data.material_used || 'block_sima',
     data.ceiling_type || 'plafond',
-    data.has_tiles ? 1 : 0,
-    data.has_electricity ? 1 : 0,
-    data.has_water ? 1 : 0,
-    data.has_parking ? 1 : 0,
-    data.has_garden ? 1 : 0,
-    data.has_wifi ? 1 : 0,
+    toInt(data.has_tiles),
+    toInt(data.has_electricity),
+    toInt(data.has_water),
+    toInt(data.has_parking),
+    toInt(data.has_garden),
+    toInt(data.has_wifi),
     data.amenities || JSON.stringify([]),
     data.images || JSON.stringify([]),
     data.province || null,
@@ -103,11 +118,11 @@ export const createHouse = async (data: any): Promise<string> => {
     data.full_address || null,
     data.monthly_rent_price || null,
     data.purchase_price || null,
-    'pending_approval'
+    data.status || 'pending_approval'
   ]);
   
-  const result = await query<any[]>('SELECT id FROM houses ORDER BY created_at DESC LIMIT 1');
-  return result[0].id;
+  const [result] = await query<any[]>('SELECT id FROM houses ORDER BY created_at DESC LIMIT 1');
+  return result.id;
 };
 
 export const updateHouse = async (id: string, data: any): Promise<void> => {
@@ -119,7 +134,13 @@ export const updateHouse = async (id: string, data: any): Promise<void> => {
   
   fields.forEach((field, index) => {
     sql += `${field} = ?${index === fields.length - 1 ? '' : ', '}`;
-    params.push(data[field]);
+    // Convert boolean fields if they are in the update data
+    const booleanFields = ['has_parking', 'has_garden', 'has_wifi', 'has_tiles', 'has_electricity', 'has_water'];
+    if (booleanFields.includes(field)) {
+        params.push(toInt(data[field]));
+    } else {
+        params.push(data[field]);
+    }
   });
   
   sql += ' WHERE id = ?';

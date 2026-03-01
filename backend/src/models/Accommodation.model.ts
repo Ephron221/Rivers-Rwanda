@@ -3,6 +3,7 @@ import { RowDataPacket } from 'mysql2';
 
 export interface Accommodation extends RowDataPacket {
   id: string;
+  seller_id: string | null;
   type: 'apartment' | 'hotel_room' | 'event_hall';
   purpose: 'rent' | 'sale' | 'both';
   name: string;
@@ -28,8 +29,16 @@ export interface Accommodation extends RowDataPacket {
 }
 
 export const getAllAccommodations = async (filters: any): Promise<Accommodation[]> => {
-  let sql = 'SELECT * FROM accommodations WHERE status = \'available\'';
+  let sql = 'SELECT * FROM accommodations WHERE 1=1';
   const params: any[] = [];
+
+  if (filters.status) {
+      sql += ' AND status = ?';
+      params.push(filters.status);
+  } else {
+      // Include available and unavailable (rented/sold) items in the public view
+      sql += " AND status IN ('available', 'unavailable', 'maintenance')";
+  }
 
   if (filters.type) {
     sql += ' AND type = ?';
@@ -46,10 +55,7 @@ export const getAllAccommodations = async (filters: any): Promise<Accommodation[
     params.push(filters.purpose);
   }
 
-  if (filters.maxPrice) {
-    sql += ' AND (price_per_night <= ? OR price_per_event <= ? OR sale_price <= ?)';
-    params.push(filters.maxPrice, filters.maxPrice, filters.maxPrice);
-  }
+  sql += ' ORDER BY created_at DESC';
 
   return await query<Accommodation[]>(sql, params);
 };
@@ -59,6 +65,8 @@ export const getAccommodationById = async (id: string): Promise<Accommodation | 
   const results = await query<Accommodation[]>(sql, [id]);
   return results[0] || null;
 };
+
+const toInt = (val: any) => (['true', true, 1, '1', 'on'].includes(val) ? 1 : 0);
 
 export const createAccommodation = async (data: any): Promise<string> => {
   const sql = `
@@ -72,7 +80,7 @@ export const createAccommodation = async (data: any): Promise<string> => {
     VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   await query(sql, [
-    data.seller_id,
+    data.seller_id || null,
     data.type,
     data.purpose || 'rent',
     data.name,
@@ -84,30 +92,38 @@ export const createAccommodation = async (data: any): Promise<string> => {
     data.sale_price || null,
     data.max_guests || null,
     data.capacity || null,
-    data.wifi ? 1 : 0,
-    data.parking ? 1 : 0,
-    data.garden ? 1 : 0,
-    data.decoration ? 1 : 0,
+    toInt(data.wifi),
+    toInt(data.parking),
+    toInt(data.garden),
+    toInt(data.decoration),
     data.floor_number || null,
-    data.has_elevator ? 1 : 0,
-    data.is_furnished ? 1 : 0,
-    'pending_approval',
+    toInt(data.has_elevator),
+    toInt(data.is_furnished),
+    data.status || 'pending_approval',
     data.images || JSON.stringify([]),
     data.amenities || JSON.stringify([])
   ]);
   
-  const result = await query<any[]>('SELECT id FROM accommodations ORDER BY created_at DESC LIMIT 1');
-  return result[0].id;
+  const [result] = await query<any[]>('SELECT id FROM accommodations ORDER BY created_at DESC LIMIT 1');
+  return result.id;
 };
 
 export const updateAccommodation = async (id: string, data: any): Promise<void> => {
+  const fields = Object.keys(data).filter(f => f !== 'id' && f !== 'existingImages');
+  if (fields.length === 0) return;
+
   let sql = 'UPDATE accommodations SET ';
   const params: any[] = [];
-  const fields = Object.keys(data).filter(f => f !== 'id');
   
+  const boolFields = ['wifi', 'parking', 'garden', 'decoration', 'has_elevator', 'is_furnished'];
+
   fields.forEach((field, index) => {
     sql += `${field} = ?${index === fields.length - 1 ? '' : ', '}`;
-    params.push(data[field]);
+    if (boolFields.includes(field)) {
+        params.push(toInt(data[field]));
+    } else {
+        params.push(data[field]);
+    }
   });
   
   sql += ' WHERE id = ?';

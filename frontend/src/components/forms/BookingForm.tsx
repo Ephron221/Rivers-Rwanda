@@ -21,13 +21,11 @@ const schema = z.object({
   payment_proof: z.any().refine(files => files?.length > 0, 'Payment proof is required.'),
 });
 
-// --- Statically defined payment details ---
 const paymentDetails = {
   bank: { name: 'Bank of Kigali', accountNumber: '0012-3456-7890-1112', accountName: 'Rivers Rwanda Ltd.' },
   momo: { number: '574623', name: 'Esron', dialCode: '*182*8*1*574623#' }
 };
 
-// --- Universal Booking Form Component ---
 const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehicle' | 'accommodation' }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -42,7 +40,6 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
   const paymentMethod = watch('payment_method');
   const duration = watch('duration');
 
-  // --- UNIVERSAL PRICE & DURATION LOGIC ---
   let price_per_unit = 0;
   let unit_label = '';
   let duration_label = 'Number of Nights';
@@ -55,7 +52,7 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
   } else if (itemType === 'house') {
     if (item.purchase_price) {
         price_per_unit = item.purchase_price;
-        show_duration = false; // No duration for purchases
+        show_duration = false;
     } else {
         price_per_unit = item.monthly_rent_price || 0;
         unit_label = '/ month';
@@ -64,7 +61,7 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
   } else if (itemType === 'vehicle') {
     if (item.sale_price) {
         price_per_unit = item.sale_price;
-        show_duration = false; // No duration for purchases
+        show_duration = false;
     } else {
         price_per_unit = item.daily_rate || 0;
         unit_label = '/ day';
@@ -86,7 +83,6 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
       }
     });
     
-    // --- UNIVERSAL PAYLOAD LOGIC ---
     let bookingType, itemIdKey;
     if (itemType === 'house') {
       bookingType = item.monthly_rent_price ? 'house_rent' : 'house_purchase';
@@ -94,19 +90,29 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
     } else if (itemType === 'vehicle') {
       bookingType = item.purpose === 'rent' ? 'vehicle_rent' : 'vehicle_purchase';
       itemIdKey = 'vehicle_id';
-    } else { // Accommodation
+    } else {
       bookingType = 'accommodation';
       itemIdKey = 'accommodation_id';
     }
 
     formData.append('booking_type', bookingType);
     formData.append(itemIdKey, item.id);
-    formData.append('total_amount', totalAmount);
+    formData.append('total_amount', totalAmount.toString());
+    
+    if (item.seller_id) {
+        formData.append('seller_id', item.seller_id);
+    }
 
     try {
       const response = await api.post('/bookings', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setBookingRef(response.data.data.bookingReference);
-      setModalOpen(true);
+      
+      if (response.data.data.isAutomatic) {
+          toast.success('Payment successful! Your booking is confirmed.');
+          setTimeout(() => navigate('/client/bookings'), 2000);
+      } else {
+          setModalOpen(true);
+      }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Booking failed');
     } finally {
@@ -183,7 +189,6 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
             <div className="text-sm space-y-1 text-gray-200">
               <p><strong>Receiver:</strong> {paymentDetails.momo.name}</p>
               <p><strong>Code:</strong> <span className="font-mono bg-black/30 p-1 rounded">{paymentDetails.momo.number}</span></p>
-              <p className="text-xs mt-2 text-gray-400">Use this code in your payment app or dial-in service.</p>
             </div>
           )}
         </div>
@@ -195,7 +200,7 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
         </div>
         
         <button type="submit" disabled={loading} className="w-full bg-accent-orange text-white font-black py-5 rounded-2xl uppercase tracking-[0.2em] text-xs hover:bg-white hover:text-primary-dark transition-all duration-500 shadow-xl relative z-10">
-          {loading ? 'Submitting...' : 'Submit Booking & Proof'}
+          {loading ? 'Processing...' : 'Submit Booking & Proof'}
         </button>
       </form>
     </>

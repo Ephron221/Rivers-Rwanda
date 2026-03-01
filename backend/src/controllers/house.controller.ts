@@ -10,27 +10,35 @@ const processRequestData = (body: any, files: any) => {
 
     const booleanFields = ['has_parking', 'has_garden', 'has_wifi', 'has_tiles', 'has_electricity', 'has_water'];
     booleanFields.forEach(field => {
-        data[field] = ['true', true, 1, 'on'].includes(data[field]) ? 1 : 0;
+        if (body[field] !== undefined) {
+            data[field] = ['true', true, 1, 'on'].includes(body[field]) ? 1 : 0;
+        }
     });
 
     const numericFields = ['total_rooms', 'bedrooms', 'bathrooms', 'balconies'];
     numericFields.forEach(field => {
-        data[field] = parseInt(data[field] || '0', 10);
+        if (body[field] !== undefined) {
+            const val = parseInt(body[field], 10);
+            data[field] = isNaN(val) ? 0 : val;
+        }
     });
 
-    data.size_sqm = parseFloat(data.size_sqm) || null;
-    data.monthly_rent_price = parseFloat(data.monthly_rent_price) > 0 ? parseFloat(data.monthly_rent_price) : null;
-    data.purchase_price = parseFloat(data.purchase_price) > 0 ? parseFloat(data.purchase_price) : null;
-
-    if (files && Array.isArray(files) && files.length > 0) {
-        const imagePaths = files.map((file: any) => {
-            const relativePath = path.relative(path.join(__dirname, '../../'), file.path);
-            return '/' + relativePath.replace(/\\/g, '/');
-        });
-        data.images = JSON.stringify(imagePaths);
-    } else if (body.images) {
-        data.images = body.images;
+    if (body.size_sqm !== undefined) {
+        const val = parseFloat(body.size_sqm);
+        data.size_sqm = isNaN(val) ? null : val;
     }
+
+    if (body.monthly_rent_price !== undefined) {
+        const val = parseFloat(body.monthly_rent_price);
+        data.monthly_rent_price = isNaN(val) || val <= 0 ? null : val;
+    }
+
+    if (body.purchase_price !== undefined) {
+        const val = parseFloat(body.purchase_price);
+        data.purchase_price = isNaN(val) || val <= 0 ? null : val;
+    }
+
+    delete data.existingImages; // Remove frontend-only field
 
     return data;
 };
@@ -60,38 +68,58 @@ export const getHouse = async (req: Request, res: Response, next: NextFunction) 
 export const createHouse = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
+    const userRole = req.user?.role;
+
     if (!userId) {
         return res.status(401).json({ success: false, message: 'Authentication error.' });
     }
 
-    const sellerId = await UserModel.getSellerIdByUserId(userId);
-    if (!sellerId) {
-        return res.status(403).json({ success: false, message: 'User is not a valid seller.' });
-    }
-    
-    const seller = await SellerModel.findSellerById(sellerId);
-    if (!seller) {
-        return res.status(404).json({ success: false, message: 'Seller profile not found.' });
+    let sellerId: string | null = null;
+    let initialStatus = 'pending_approval';
+
+    if (userRole === 'admin') {
+        sellerId = null; 
+        initialStatus = 'available';
+    } else {
+        sellerId = await UserModel.getSellerIdByUserId(userId);
+        if (!sellerId) {
+            return res.status(403).json({ success: false, message: 'User is not a valid seller.' });
+        }
+        
+        const seller = await SellerModel.findSellerById(sellerId);
+        if (!seller) {
+            return res.status(404).json({ success: false, message: 'Seller profile not found.' });
+        }
+
+        if (seller.status !== 'approved') {
+            return res.status(403).json({ success: false, message: 'Your seller account has not been approved.' });
+        }
+
+        const { agreed_to_commission } = req.body;
+        if (!seller.agreed_to_commission && agreed_to_commission !== 'true' && agreed_to_commission !== true) {
+            return res.status(403).json({ success: false, message: 'You must agree to the commission terms.' });
+        }
+
+        if (!seller.agreed_to_commission && (agreed_to_commission === 'true' || agreed_to_commission === true)) {
+            await SellerModel.updateSeller(sellerId, { agreed_to_commission: true });
+        }
     }
 
-    if (seller.status !== 'approved') {
-        return res.status(403).json({ success: false, message: 'Your seller account has not been approved.' });
-    }
-
-    const { agreed_to_commission } = req.body;
-    if (!seller.agreed_to_commission && agreed_to_commission !== 'true' && agreed_to_commission !== true) {
-        return res.status(403).json({ success: false, message: 'You must agree to the commission terms.' });
-    }
-
-    if (!seller.agreed_to_commission && (agreed_to_commission === 'true' || agreed_to_commission === true)) {
-        await SellerModel.updateSeller(sellerId, { agreed_to_commission: true });
-    }
-
-    const sanitizedData = processRequestData(req.body, req.files);
+    const sanitizedData = processRequestData(req.body, null);
     sanitizedData.seller_id = sellerId;
+    sanitizedData.status = initialStatus;
+
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+        const imagePaths = req.files.map((file: any) => `/uploads/houses/${path.basename(file.path)}`);
+        sanitizedData.images = JSON.stringify(imagePaths);
+    }
 
     const houseId = await HouseModel.createHouse(sanitizedData);
-    res.status(201).json({ success: true, message: 'House created successfully and is pending approval.', id: houseId });
+    res.status(201).json({ 
+        success: true, 
+        message: userRole === 'admin' ? 'House created and published.' : 'House created and is pending approval.', 
+        id: houseId 
+    });
   } catch (error) {
     next(error);
   }
@@ -99,8 +127,29 @@ export const createHouse = async (req: AuthenticatedRequest, res: Response, next
 
 export const updateHouse = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const sanitizedData = processRequestData(req.body, req.files);
-    await HouseModel.updateHouse(req.params.id, sanitizedData);
+    const { id } = req.params;
+    const existing = await HouseModel.getHouseById(id);
+    if (!existing) return res.status(404).json({ success: false, message: 'House not found' });
+
+    // Handle Image Logic
+    let finalImages = [];
+    if (req.body.existingImages) {
+        try {
+            finalImages = JSON.parse(req.body.existingImages);
+        } catch(e) { finalImages = []; }
+    }
+
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+        const newImages = req.files.map((file: any) => `/uploads/houses/${path.basename(file.path)}`);
+        finalImages = [...finalImages, ...newImages];
+    }
+
+    const sanitizedData = processRequestData(req.body, null);
+    if (finalImages.length > 0 || (req.files && Array.isArray(req.files) && req.files.length > 0)) {
+        sanitizedData.images = JSON.stringify(finalImages);
+    }
+
+    await HouseModel.updateHouse(id, sanitizedData);
     res.status(200).json({ success: true, message: 'House updated successfully' });
   } catch (error) {
     next(error);

@@ -89,7 +89,7 @@ CREATE TABLE sellers (
 -- 6. ACCOMMODATIONS TABLE
 CREATE TABLE accommodations (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    seller_id CHAR(36) NOT NULL,
+    seller_id CHAR(36) NULL, -- Modified: Nullable for Admin properties
     type ENUM('apartment', 'hotel_room', 'event_hall') NOT NULL,
     purpose ENUM('rent', 'sale', 'both') DEFAULT 'rent',
     name VARCHAR(255) NOT NULL,
@@ -127,7 +127,7 @@ CREATE TABLE accommodations (
 -- 7. VEHICLES TABLE
 CREATE TABLE vehicles (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    seller_id CHAR(36) NOT NULL,
+    seller_id CHAR(36) NULL, -- Modified: Nullable for Admin properties
     purpose ENUM('rent', 'buy', 'both') NOT NULL,
     make VARCHAR(100) NOT NULL,
     model VARCHAR(100) NOT NULL,
@@ -154,7 +154,7 @@ CREATE TABLE vehicles (
 -- 8. HOUSES TABLE
 CREATE TABLE houses (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    seller_id CHAR(36) NOT NULL,
+    seller_id CHAR(36) NULL, -- Modified: Nullable for Admin properties
     purpose ENUM('rent', 'sale', 'both') DEFAULT 'rent',
     title VARCHAR(255) NOT NULL,
     description TEXT,

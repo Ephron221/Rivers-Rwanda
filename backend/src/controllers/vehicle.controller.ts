@@ -31,31 +31,40 @@ export const getVehicle = async (req: Request, res: Response, next: NextFunction
 export const createVehicle = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
+    const userRole = req.user?.role;
     if (!userId) {
         return res.status(401).json({ success: false, message: 'Authentication error.' });
     }
 
-    const sellerId = await UserModel.getSellerIdByUserId(userId);
-    if (!sellerId) {
-        return res.status(403).json({ success: false, message: 'User is not a valid seller.' });
-    }
+    let sellerId: string | null = null;
+    let initialStatus = 'pending_approval';
 
-    const seller = await SellerModel.findSellerById(sellerId);
-    if (!seller) {
-        return res.status(404).json({ success: false, message: 'Seller profile not found.' });
-    }
+    if (userRole === 'admin') {
+        sellerId = null;
+        initialStatus = 'available';
+    } else {
+        sellerId = await UserModel.getSellerIdByUserId(userId);
+        if (!sellerId) {
+            return res.status(403).json({ success: false, message: 'User is not a valid seller.' });
+        }
 
-    if (seller.status !== 'approved') {
-        return res.status(403).json({ success: false, message: 'Your seller account has not been approved.' });
-    }
+        const seller = await SellerModel.findSellerById(sellerId);
+        if (!seller) {
+            return res.status(404).json({ success: false, message: 'Seller profile not found.' });
+        }
 
-    const { agreed_to_commission } = req.body;
-    if (!seller.agreed_to_commission && String(agreed_to_commission) !== 'true') {
-        return res.status(403).json({ success: false, message: 'You do not have permission to perform this action.' });
-    }
+        if (seller.status !== 'approved') {
+            return res.status(403).json({ success: false, message: 'Your seller account has not been approved.' });
+        }
 
-    if (!seller.agreed_to_commission && String(agreed_to_commission) === 'true') {
-        await SellerModel.updateSeller(sellerId, { agreed_to_commission: true } as Partial<SellerModel.Seller>);
+        const { agreed_to_commission } = req.body;
+        if (!seller.agreed_to_commission && String(agreed_to_commission) !== 'true') {
+            return res.status(403).json({ success: false, message: 'You must agree to the commission terms.' });
+        }
+
+        if (!seller.agreed_to_commission && String(agreed_to_commission) === 'true') {
+            await SellerModel.updateSeller(sellerId, { agreed_to_commission: true } as Partial<SellerModel.Seller>);
+        }
     }
 
     const imagePaths: string[] = [];
@@ -70,11 +79,16 @@ export const createVehicle = async (req: AuthenticatedRequest, res: Response, ne
     const data = {
       ...req.body,
       seller_id: sellerId,
-      images: JSON.stringify(imagePaths)
+      images: JSON.stringify(imagePaths),
+      status: initialStatus
     };
 
     const newId = await VehicleModel.createVehicle(data);
-    res.status(201).json({ success: true, message: 'Vehicle created and is pending approval.', data: { id: newId } });
+    res.status(201).json({ 
+        success: true, 
+        message: userRole === 'admin' ? 'Vehicle created and published.' : 'Vehicle created and is pending approval.', 
+        data: { id: newId } 
+    });
   } catch (error) {
     next(error);
   }

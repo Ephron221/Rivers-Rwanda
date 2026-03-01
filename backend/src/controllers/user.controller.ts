@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { query } from '../database/connection';
 import { TokenPayload } from '../utils/jwt.utils';
 
-// Define a local interface or use global augmentation
 interface AuthenticatedRequest extends Request {
   user?: TokenPayload;
 }
@@ -30,6 +29,10 @@ export const getProfile = async (req: AuthenticatedRequest, res: Response, next:
         tableName = 'agents';
         alias = 'a';
         extraFields = ', a.referral_code';
+        break;
+      case 'seller':
+        tableName = 'sellers';
+        alias = 's';
         break;
       case 'admin':
         tableName = 'admin_profiles';
@@ -89,6 +92,7 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response, ne
         const roleToTableMap: { [key: string]: string | null } = {
             client: 'clients',
             agent: 'agents',
+            seller: 'sellers',
             admin: 'admin_profiles',
         };
         const table = roleToTableMap[role];
@@ -101,7 +105,6 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response, ne
         const existingProfile = await query<any[]>(checkSql, [userId]);
 
         if (existingProfile.length > 0) {
-            // Update existing profile
             const setClauses: string[] = [];
             const params: any[] = [];
 
@@ -116,15 +119,10 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response, ne
                 await query(updateSql, params);
             }
         } else {
-            // Insert new profile
             if (!firstName || !lastName) {
                  return res.status(400).json({ success: false, message: 'First name and last name are required.' });
             }
-            if (role === 'agent' && !phoneNumber) {
-                return res.status(400).json({ success: false, message: 'Phone number is required for new agent profiles.' });
-            }
-
-            const insertSql = `INSERT INTO ${table} (user_id, first_name, last_name, phone_number, profile_image) VALUES (?, ?, ?, ?, ?)`;
+            const insertSql = `INSERT INTO ${table} (id, user_id, first_name, last_name, phone_number, profile_image) VALUES (UUID(), ?, ?, ?, ?, ?)`;
             await query(insertSql, [userId, firstName, lastName, phoneNumber || null, profileImage || null]);
         }
 

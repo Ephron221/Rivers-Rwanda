@@ -5,40 +5,176 @@ import * as AccommodationModel from '../models/Accommodation.model';
 import * as VehicleModel from '../models/Vehicle.model';
 import * as HouseModel from '../models/House.model';
 import * as CommissionModel from '../models/Commission.model';
-import { getClientIdByUserId } from '../models/User.model';
-import { sendSaleConfirmationEmail } from '../services/email.service';
+import { getClientIdByUserId, findUserByEmail } from '../models/User.model';
+import { getAgentId } from '../utils/agent.utils';
+import { sendBookingConfirmationEmail } from '../services/email.service';
 import QRCode from 'qrcode';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { query } from '../database/connection';
 
 const getRelativePath = (fullPath: string): string => {
     const uploadsDir = 'uploads';
-    const uploadsIndex = fullPath.indexOf(uploadsDir);
+    const uploadsIndex = fullPath.indexOf('uploads');
     if (uploadsIndex === -1) return fullPath; 
     const relativePath = fullPath.substring(uploadsIndex);
     return '/' + relativePath.replace(/\\/g, '/');
 }
 
+/**
+ * Helper to process commissions, status updates, and notify all parties
+ */
+async function processConfirmedBooking(bookingId: string) {
+    const booking = await BookingModel.getBookingById(bookingId);
+    if (!booking) return;
+
+    // 1. Update Statuses
+    await BookingModel.updateBookingStatus(bookingId, 'confirmed');
+    await BookingModel.updateBookingPaymentStatus(bookingId, 'paid');
+
+    let propertyName = "Property";
+    let sellerId = booking.seller_id;
+
+    // 2. Resolve Property Details and Update Status
+    if (booking.house_id) {
+        const house = await HouseModel.getHouseById(booking.house_id);
+        propertyName = house?.title || "House";
+        if (!sellerId) sellerId = house?.seller_id;
+        await HouseModel.updateHouseStatus(booking.house_id, booking.booking_type.includes('purchase') ? 'purchased' : 'rented');
+    } else if (booking.accommodation_id) {
+        const acc = await AccommodationModel.getAccommodationById(booking.accommodation_id);
+        propertyName = acc?.name || "Accommodation";
+        if (!sellerId) sellerId = acc?.seller_id;
+        await AccommodationModel.updateAccommodationStatus(booking.accommodation_id, 'unavailable');
+    } else if (booking.vehicle_id) {
+        const veh = await VehicleModel.getVehicleById(booking.vehicle_id);
+        propertyName = `${veh?.make} ${veh?.model}` || "Vehicle";
+        if (!sellerId) sellerId = veh?.seller_id;
+        await VehicleModel.updateVehicleStatus(booking.vehicle_id, booking.booking_type.includes('purchase') ? 'sold' : 'rented');
+    }
+
+    // 3. Commissions
+    const totalAmount = Number(booking.total_amount);
+    const systemFee = totalAmount * 0.10;
+    let agentFee = 0;
+
+    if (booking.agent_id) {
+        agentFee = totalAmount * 0.05;
+        await CommissionModel.createCommission({
+            booking_id: bookingId,
+            amount: agentFee,
+            commission_type: 'agent',
+            agent_id: booking.agent_id,
+            status: 'pending'
+        });
+    }
+
+    await CommissionModel.createCommission({
+        booking_id: bookingId,
+        amount: systemFee,
+        commission_type: 'system',
+        seller_id: sellerId,
+        status: 'approved'
+    });
+
+    // 4. Gather Emails for Notification
+    const emails: string[] = [];
+    let clientName = "Client";
+    let sellerName = "Seller";
+    let agentName = "";
+
+    const [clientInfo] = await query<any[]>('SELECT u.email, CONCAT(c.first_name, " ", c.last_name) as name FROM users u JOIN clients c ON u.id = c.user_id WHERE c.id = ?', [booking.client_id]);
+    if (clientInfo) { emails.push(clientInfo.email); clientName = clientInfo.name; }
+
+    if (sellerId) {
+        const [sellerInfo] = await query<any[]>('SELECT u.email, CONCAT(s.first_name, " ", s.last_name) as name FROM users u JOIN sellers s ON u.id = s.user_id WHERE s.id = ?', [sellerId]);
+        if (sellerInfo) { emails.push(sellerInfo.email); sellerName = sellerInfo.name; }
+    }
+
+    if (booking.agent_id) {
+        const [agentInfo] = await query<any[]>('SELECT u.email, CONCAT(a.first_name, " ", a.last_name) as name FROM users u JOIN agents a ON u.id = a.user_id WHERE a.id = ?', [booking.agent_id]);
+        if (agentInfo) { emails.push(agentInfo.email); agentName = agentInfo.name; }
+    }
+
+    const [admins] = await query<any[]>('SELECT email FROM users WHERE role = "admin" AND status = "active"');
+    if (Array.isArray(admins)) { admins.forEach(adm => emails.push(adm.email)); } else if (admins) { emails.push(admins.email); }
+
+    // 5. Send Professional Confirmation Email to All Parties
+    await sendBookingConfirmationEmail(emails, {
+        bookingReference: booking.booking_reference,
+        propertyName,
+        totalAmount,
+        clientName,
+        agentName,
+        sellerName,
+        bookingType: booking.booking_type,
+        isSale: booking.booking_type.includes('purchase')
+    });
+}
+
 export const createBooking = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
+    const userRole = req.user?.role;
     if (!userId) return res.status(401).json({ success: false, message: 'User not authenticated' });
 
-    const clientId = await getClientIdByUserId(userId);
-    if (!clientId) return res.status(404).json({ success: false, message: 'Client profile not found.' });
+    let clientId: string | null = null;
+    let agentId: string | null = null;
 
-    if (!req.body.total_amount) {
-        return res.status(400).json({ success: false, message: 'Total amount is required for booking.' });
+    if (userRole === 'client') {
+        clientId = await getClientIdByUserId(userId);
+    } else if (userRole === 'agent') {
+        agentId = await getAgentId(userId);
+        const clientEmail = req.body.email;
+        if (clientEmail) {
+            const clientUser = await findUserByEmail(clientEmail);
+            if (clientUser) clientId = await getClientIdByUserId(clientUser.id);
+        }
+    }
+
+    if (!clientId && userRole !== 'admin') {
+        return res.status(404).json({ success: false, message: 'Client profile not found.' });
     }
 
     const bookingData = { 
         ...req.body, 
         client_id: clientId,
+        agent_id: agentId,
         total_amount: parseFloat(req.body.total_amount)
     };
     
+    // STRICT AUTO-CONFIRM CHECK:
+    // Only if seller_id is present, not empty, and not "null" (string)
+    const rawSellerId = req.body.seller_id;
+    const hasSeller = rawSellerId && rawSellerId !== "" && rawSellerId !== "null" && rawSellerId !== "undefined";
+    
+    // Explicitly check for isAutomatic
+    const isAutomatic = hasSeller;
+
     const newBooking = await BookingModel.createBooking(bookingData);
 
+    if (isAutomatic) {
+        // AUTOMATIC FLOW: Instantly Paid & Confirmed
+        const proofPath = req.file ? getRelativePath(req.file.path) : null;
+        await query(
+            'INSERT INTO payments (id, booking_id, amount, payment_method, transaction_id, payment_proof_path, status, verified_at) VALUES (UUID(), ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
+            [newBooking.id, newBooking.total_amount, req.body.payment_method || 'direct', 'AUTO_' + Date.now(), proofPath, 'completed']
+        );
+        
+        await processConfirmedBooking(newBooking.id);
+
+        return res.status(201).json({ 
+            success: true, 
+            message: 'Payment processed! All parties have been notified via email with QR codes.', 
+            data: { 
+                bookingId: newBooking.id, 
+                bookingReference: newBooking.booking_reference,
+                isAutomatic: true
+            } 
+        });
+    }
+
+    // MANUAL FLOW: Properties with no seller (Admin properties)
+    // These MUST go through manual verification
     if (req.file) {
       await PaymentModel.createPayment({
         booking_id: newBooking.id,
@@ -48,10 +184,29 @@ export const createBooking = async (req: AuthenticatedRequest, res: Response, ne
       });
     }
     
-    res.status(201).json({ success: true, message: 'Booking created!', data: { bookingId: newBooking.id, bookingReference: newBooking.booking_reference } });
+    res.status(201).json({ 
+        success: true, 
+        message: 'Booking request submitted. Please wait for admin verification of your payment.', 
+        data: { 
+            bookingId: newBooking.id, 
+            bookingReference: newBooking.booking_reference,
+            isAutomatic: false
+        } 
+    });
   } catch (error) {
     next(error);
   }
+};
+
+export const confirmPayment = async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    try {
+        await PaymentModel.updatePaymentStatusByBookingId(id, 'completed');
+        await processConfirmedBooking(id);
+        res.status(200).json({ success: true, message: 'Payment confirmed. All parties notified.' });
+    } catch (error) {
+        next(error);
+    }
 };
 
 export const getInvoiceData = async (req: Request, res: Response, next: NextFunction) => {
@@ -67,81 +222,6 @@ export const getInvoiceData = async (req: Request, res: Response, next: NextFunc
         const qrCodeImage = await QRCode.toDataURL(url.toString());
         res.status(200).json({ success: true, data: { ...details, qrCodeImage } });
     } catch (error) {
-        next(error);
-    }
-};
-
-export const confirmPayment = async (req: Request, res: Response, next: NextFunction) => {
-    const { id } = req.params;
-    try {
-        const booking = await BookingModel.getBookingById(id);
-        if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-
-        await BookingModel.updateBookingStatus(id, 'confirmed');
-        await BookingModel.updateBookingPaymentStatus(id, 'paid');
-        await PaymentModel.updatePaymentStatusByBookingId(id, 'completed');
-
-        let propertyName = "Property";
-        let sellerId = booking.seller_id;
-
-        if (booking.house_id) {
-            const house = await HouseModel.getHouseById(booking.house_id);
-            propertyName = house?.title || "House";
-            if (!sellerId) sellerId = house?.seller_id;
-            await HouseModel.updateHouseStatus(booking.house_id, booking.booking_type.includes('purchase') ? 'purchased' : 'rented');
-        } else if (booking.accommodation_id) {
-            const acc = await AccommodationModel.getAccommodationById(booking.accommodation_id);
-            propertyName = acc?.name || "Accommodation";
-            if (!sellerId) sellerId = acc?.seller_id;
-            await AccommodationModel.updateAccommodationStatus(booking.accommodation_id, 'unavailable');
-        } else if (booking.vehicle_id) {
-            const veh = await VehicleModel.getVehicleById(booking.vehicle_id);
-            propertyName = `${veh?.make} ${veh?.model}` || "Vehicle";
-            if (!sellerId) sellerId = veh?.seller_id;
-            await VehicleModel.updateVehicleStatus(booking.vehicle_id, booking.booking_type.includes('purchase') ? 'sold' : 'rented');
-        }
-
-        const totalAmount = Number(booking.total_amount);
-        const systemFee = totalAmount * 0.10; 
-        let agentFee = 0;
-
-        if (booking.agent_id) {
-            agentFee = totalAmount * 0.05; 
-            await CommissionModel.createCommission({
-                booking_id: id,
-                amount: agentFee,
-                commission_type: 'agent',
-                agent_id: booking.agent_id,
-                status: 'pending'
-            });
-        }
-
-        await CommissionModel.createCommission({
-            booking_id: id,
-            seller_id: sellerId,
-            amount: systemFee,
-            commission_type: 'system',
-            status: 'approved'
-        });
-
-        const netAmount = totalAmount - systemFee - agentFee;
-
-        if (sellerId) {
-            const [sellerUser] = await query<any[]>('SELECT email FROM users WHERE id = (SELECT user_id FROM sellers WHERE id = ?)', [sellerId]);
-            if (sellerUser) {
-                await sendSaleConfirmationEmail(sellerUser.email, {
-                    propertyName,
-                    amount: totalAmount,
-                    systemFee: systemFee,
-                    agentFee: agentFee,
-                    netAmount: netAmount
-                });
-            }
-        }
-
-        res.status(200).json({ success: true, message: 'Payment confirmed, commissions recorded, and seller notified.' });
-    } catch (error) {
-        console.error("CONFIRM_PAYMENT_ERROR:", error);
         next(error);
     }
 };
