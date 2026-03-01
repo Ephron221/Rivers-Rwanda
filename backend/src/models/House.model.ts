@@ -38,14 +38,14 @@ export const getAllHouses = async (filters: any): Promise<House[]> => {
   let sql = 'SELECT * FROM houses WHERE 1=1'; 
   const params: any[] = [];
 
-  if (filters.status) {
+  if (filters.status && filters.status !== 'all') {
       sql += ' AND status = ?';
       params.push(filters.status);
-  } else {
-      // Show all active/visible statuses but hide rejected or purely pending ones if necessary
-      // For now, let's show available, rented, purchased, and under maintenance
+  } else if (!filters.status) {
+      // Default public view
       sql += " AND status IN ('available', 'rented', 'purchased', 'under maintenance')";
   }
+  // If status is 'all', we don't add any status filter and show everything
 
   if (filters.province) {
     sql += ' AND province = ?';
@@ -90,16 +90,17 @@ export const createHouse = async (data: any): Promise<string> => {
     VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   
-  await query(sql, [
-    data.seller_id || null,
+  // Explicitly ensure NO field is undefined. If a field is missing, use null.
+  const params = [
+    data.seller_id ?? null,
     data.purpose || 'rent',
-    data.title,
-    data.description,
-    data.size_sqm || null,
-    data.total_rooms || 0,
-    data.bedrooms || 0,
-    data.bathrooms || 0,
-    data.balconies || 0,
+    data.title || '',
+    data.description || '',
+    data.size_sqm ?? null,
+    data.total_rooms ?? 0,
+    data.bedrooms ?? 0,
+    data.bathrooms ?? 0,
+    data.balconies ?? 0,
     data.kitchen_type || 'inside',
     data.toilet_type || 'inside',
     data.material_used || 'block_sima',
@@ -110,16 +111,18 @@ export const createHouse = async (data: any): Promise<string> => {
     toInt(data.has_parking),
     toInt(data.has_garden),
     toInt(data.has_wifi),
-    data.amenities || JSON.stringify([]),
-    data.images || JSON.stringify([]),
-    data.province || null,
-    data.district || null,
-    data.sector || null,
-    data.full_address || null,
-    data.monthly_rent_price || null,
-    data.purchase_price || null,
+    data.amenities || '[]',
+    data.images || '[]',
+    data.province ?? null,
+    data.district ?? null,
+    data.sector ?? null,
+    data.full_address ?? null,
+    data.monthly_rent_price ?? null,
+    data.purchase_price ?? null,
     data.status || 'pending_approval'
-  ]);
+  ];
+
+  await query(sql, params);
   
   const [result] = await query<any[]>('SELECT id FROM houses ORDER BY created_at DESC LIMIT 1');
   return result.id;
@@ -134,12 +137,12 @@ export const updateHouse = async (id: string, data: any): Promise<void> => {
   
   fields.forEach((field, index) => {
     sql += `${field} = ?${index === fields.length - 1 ? '' : ', '}`;
-    // Convert boolean fields if they are in the update data
     const booleanFields = ['has_parking', 'has_garden', 'has_wifi', 'has_tiles', 'has_electricity', 'has_water'];
     if (booleanFields.includes(field)) {
         params.push(toInt(data[field]));
     } else {
-        params.push(data[field]);
+        // Important: Use null coalescing to prevent 'undefined'
+        params.push(data[field] ?? null);
     }
   });
   
