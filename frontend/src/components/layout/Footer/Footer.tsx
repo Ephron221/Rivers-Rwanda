@@ -17,13 +17,17 @@ const Footer = () => {
             </p>
             <div className="flex gap-4 text-accent-orange">
               <Facebook size={18} className="cursor-pointer hover:text-white transition-colors" />
-              <Twitter size={18} className="cursor-pointer hover:text-white transition-colors" />
+               <a href="https://x.com/RiversRwanda1" target="_blank" rel="noopener noreferrer">
+                  <Twitter size={18} className="cursor-pointer hover:text-white transition-colors" />
+                </a>
+
               <a href="https://www.instagram.com/reel/DVAxu4fE4Fv/?igsh=MTdxbDBsbXMzaG1lNw==" target="_blank" rel="noopener noreferrer">
                 <Instagram size={18} className="cursor-pointer hover:text-white transition-colors" />
               </a>
               <a href="https://www.linkedin.com/in/rivers-rwanda-8763363b5" target="_blank" rel="noopener noreferrer">
                 <Linkedin size={18} className="cursor-pointer hover:text-white transition-colors" />
               </a>
+
               <a href="https://www.youtube.com/@riversrwanda" target="_blank" rel="noopener noreferrer">
                 <Youtube size={18} className="cursor-pointer hover:text-white transition-colors" />
               </a>
