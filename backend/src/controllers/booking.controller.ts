@@ -142,39 +142,11 @@ export const createBooking = async (req: AuthenticatedRequest, res: Response, ne
         total_amount: parseFloat(req.body.total_amount)
     };
     
-    // STRICT AUTO-CONFIRM CHECK:
-    // Only if seller_id is present, not empty, and not "null" (string)
-    const rawSellerId = req.body.seller_id;
-    const hasSeller = rawSellerId && rawSellerId !== "" && rawSellerId !== "null" && rawSellerId !== "undefined";
-    
-    // Explicitly check for isAutomatic
-    const isAutomatic = hasSeller;
-
+    // Create the booking record (defaults to 'pending')
     const newBooking = await BookingModel.createBooking(bookingData);
 
-    if (isAutomatic) {
-        // AUTOMATIC FLOW: Instantly Paid & Confirmed
-        const proofPath = req.file ? getRelativePath(req.file.path) : null;
-        await query(
-            'INSERT INTO payments (id, booking_id, amount, payment_method, transaction_id, payment_proof_path, status, verified_at) VALUES (UUID(), ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
-            [newBooking.id, newBooking.total_amount, req.body.payment_method || 'direct', 'AUTO_' + Date.now(), proofPath, 'completed']
-        );
-        
-        await processConfirmedBooking(newBooking.id);
-
-        return res.status(201).json({ 
-            success: true, 
-            message: 'Payment processed! All parties have been notified via email with QR codes.', 
-            data: { 
-                bookingId: newBooking.id, 
-                bookingReference: newBooking.booking_reference,
-                isAutomatic: true
-            } 
-        });
-    }
-
-    // MANUAL FLOW: Properties with no seller (Admin properties)
-    // These MUST go through manual verification
+    // MANUAL FLOW FOR ALL:
+    // Every booking now requires a payment proof and manual admin confirmation.
     if (req.file) {
       await PaymentModel.createPayment({
         booking_id: newBooking.id,
