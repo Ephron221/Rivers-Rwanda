@@ -218,13 +218,13 @@ const AddHouseForm = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 bg-orange-50/50 rounded-[2.5rem] border border-orange-100">
             {(purpose === 'rent' || purpose === 'both') && (
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-primary-dark">Monthly Rent (USD)</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-primary-dark">Monthly Rent (RWF)</label>
                     <input type="number" {...register('monthly_rent_price')} className="w-full p-4 border-2 border-white rounded-2xl font-bold text-primary-dark outline-none focus:border-accent-orange shadow-sm" />
                 </div>
             )}
             {(purpose === 'sale' || purpose === 'both') && (
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-primary-dark">Purchase Price (USD)</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-primary-dark">Purchase Price (RWF)</label>
                     <input type="number" {...register('purchase_price')} className="w-full p-4 border-2 border-white rounded-2xl font-bold text-primary-dark outline-none focus:border-accent-orange shadow-sm" />
                 </div>
             )}
