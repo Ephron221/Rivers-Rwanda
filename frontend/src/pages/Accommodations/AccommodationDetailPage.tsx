@@ -4,9 +4,9 @@ import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { 
-  Share2, Heart, ArrowLeft, ShieldCheck, Users, BedDouble, Bath, 
-  MapPin, Star, Wifi, Car, Calendar, Info, CheckCircle2, XCircle,
-  TreePine, Sparkles, Building2, Box
+  Share2, Heart, ArrowLeft, ShieldCheck, Users, 
+  MapPin, Star, Wifi, Car, Info, CheckCircle2, XCircle,
+  TreePine, Sparkles, Building2, Box, Dumbbell, Utensils, Bath, Tv, Waves, BedDouble, Layers
 } from 'lucide-react';
 import ImageGallery from '../../components/common/ImageGallery';
 import BookingForm from '../../components/forms/BookingForm';
@@ -89,7 +89,7 @@ const AccommodationDetailPage = () => {
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <span className="bg-accent-orange/10 text-accent-orange px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-accent-orange/20">
-                    {item.type?.replace('_', ' ')}
+                    {item.type?.replace('_', ' ')} {item.sub_type ? `(${item.sub_type})` : ''}
                   </span>
                   <div className="flex text-accent-orange gap-1">
                     {[1,2,3,4,5].map(s => <Star key={s} size={14} fill="currentColor" />)}
@@ -98,6 +98,11 @@ const AccommodationDetailPage = () => {
                 <h1 className="text-4xl md:text-5xl font-black text-primary-dark uppercase tracking-tighter leading-none">
                   {item.name}
                 </h1>
+                {item.room_name_number && (
+                  <p className="text-accent-orange font-black uppercase text-sm tracking-widest">
+                    Room: {item.room_name_number}
+                  </p>
+                )}
                 <div className="flex items-center gap-2 text-text-light font-bold text-sm uppercase tracking-wide">
                   <MapPin size={18} className="text-accent-orange" />
                   {item.street_address}, {item.district}, {item.city}
@@ -107,23 +112,27 @@ const AccommodationDetailPage = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-10 border-y border-gray-100">
                 <div className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-3xl">
                   <Users size={24} className="text-accent-orange" />
-                  <span className="text-[10px] font-black uppercase text-gray-400">Capacity</span>
+                  <span className="text-[10px] font-black uppercase text-gray-400">Max Guests</span>
                   <span className="text-lg font-black text-primary-dark">{item.max_guests || item.capacity || 0}</span>
                 </div>
+                {item.floor_number !== null && (
+                  <div className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-3xl">
+                    <Layers size={24} className="text-accent-orange" />
+                    <span className="text-[10px] font-black uppercase text-gray-400">Floor</span>
+                    <span className="text-lg font-black text-primary-dark">{item.floor_number}</span>
+                  </div>
+                )}
+                {item.bed_type && (
+                   <div className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-3xl">
+                    <BedDouble size={24} className="text-accent-orange" />
+                    <span className="text-[10px] font-black uppercase text-gray-400">Bed Type</span>
+                    <span className="text-[10px] font-black text-primary-dark uppercase">{item.bed_type}</span>
+                  </div>
+                )}
                 <div className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-3xl">
-                  <Wifi size={24} className="text-accent-orange" />
-                  <span className="text-[10px] font-black uppercase text-gray-400">WiFi</span>
-                  <span className="text-[10px] font-black text-primary-dark uppercase">{item.wifi ? 'Available' : 'No'}</span>
-                </div>
-                <div className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-3xl">
-                  <Car size={24} className="text-accent-orange" />
-                  <span className="text-[10px] font-black uppercase text-gray-400">Parking</span>
-                  <span className="text-[10px] font-black text-primary-dark uppercase">{item.parking ? 'Yes' : 'No'}</span>
-                </div>
-                <div className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-3xl">
-                  <Info size={24} className="text-accent-orange" />
-                  <span className="text-[10px] font-black uppercase text-gray-400">Floor</span>
-                  <span className="text-lg font-black text-primary-dark">{item.floor_number || '0'}</span>
+                  <ShieldCheck size={24} className="text-accent-orange" />
+                  <span className="text-[10px] font-black uppercase text-gray-400">Status</span>
+                  <span className="text-[10px] font-black text-primary-dark uppercase">{item.status}</span>
                 </div>
               </div>
 
@@ -135,11 +144,16 @@ const AccommodationDetailPage = () => {
               </div>
 
               <div className="space-y-6">
-                <h3 className="text-xl font-black text-primary-dark uppercase tracking-widest">Amenities</h3>
+                <h3 className="text-xl font-black text-primary-dark uppercase tracking-widest">Facilities & Amenities</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                     {item.wifi && <div className="flex items-center gap-3 text-sm font-bold uppercase text-gray-600"><Wifi size={18} className="text-accent-orange"/> Free WiFi</div>}
                     {item.parking && <div className="flex items-center gap-3 text-sm font-bold uppercase text-gray-600"><Car size={18} className="text-accent-orange"/> Free Parking</div>}
                     {item.garden && <div className="flex items-center gap-3 text-sm font-bold uppercase text-gray-600"><TreePine size={18} className="text-accent-orange"/> Private Garden</div>}
+                    {item.gym && <div className="flex items-center gap-3 text-sm font-bold uppercase text-gray-600"><Dumbbell size={18} className="text-accent-orange"/> Gym / Fitness</div>}
+                    {item.kitchen && <div className="flex items-center gap-3 text-sm font-bold uppercase text-gray-600"><Utensils size={18} className="text-accent-orange"/> Kitchen</div>}
+                    {item.toilet && <div className="flex items-center gap-3 text-sm font-bold uppercase text-gray-600"><Bath size={18} className="text-accent-orange"/> Toilet</div>}
+                    {item.living_room && <div className="flex items-center gap-3 text-sm font-bold uppercase text-gray-600"><Tv size={18} className="text-accent-orange"/> Living Room</div>}
+                    {item.swimming_pool && <div className="flex items-center gap-3 text-sm font-bold uppercase text-gray-600"><Waves size={18} className="text-accent-orange"/> Swimming Pool</div>}
                     {item.decoration && <div className="flex items-center gap-3 text-sm font-bold uppercase text-gray-600"><Sparkles size={18} className="text-accent-orange"/> Decoration Incl.</div>}
                     {item.has_elevator && <div className="flex items-center gap-3 text-sm font-bold uppercase text-gray-600"><Building2 size={18} className="text-accent-orange"/> Elevator</div>}
                     {item.is_furnished && <div className="flex items-center gap-3 text-sm font-bold uppercase text-gray-600"><Box size={18} className="text-accent-orange"/> Fully Furnished</div>}

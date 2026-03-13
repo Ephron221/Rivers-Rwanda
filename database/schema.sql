@@ -89,8 +89,9 @@ CREATE TABLE sellers (
 -- 6. ACCOMMODATIONS TABLE
 CREATE TABLE accommodations (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    seller_id CHAR(36) NULL, -- Modified: Nullable for Admin properties
+    seller_id CHAR(36) NULL,
     type ENUM('apartment', 'hotel_room', 'event_hall') NOT NULL,
+    sub_type ENUM('whole', 'room') DEFAULT 'whole',
     purpose ENUM('rent', 'sale', 'both') DEFAULT 'rent',
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -109,7 +110,14 @@ CREATE TABLE accommodations (
     parking BOOLEAN DEFAULT FALSE,
     garden BOOLEAN DEFAULT FALSE,
     decoration BOOLEAN DEFAULT FALSE,
+    gym BOOLEAN DEFAULT FALSE,
+    kitchen BOOLEAN DEFAULT FALSE,
+    toilet BOOLEAN DEFAULT FALSE,
+    living_room BOOLEAN DEFAULT FALSE,
+    swimming_pool BOOLEAN DEFAULT FALSE,
     floor_number INT,
+    room_name_number VARCHAR(100),
+    bed_type ENUM('single', 'double', 'triple', 'other'),
     has_elevator BOOLEAN DEFAULT FALSE,
     is_furnished BOOLEAN DEFAULT FALSE,
     amenities JSON,
@@ -127,7 +135,7 @@ CREATE TABLE accommodations (
 -- 7. VEHICLES TABLE
 CREATE TABLE vehicles (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    seller_id CHAR(36) NULL, -- Modified: Nullable for Admin properties
+    seller_id CHAR(36) NULL,
     purpose ENUM('rent', 'buy', 'both') NOT NULL,
     make VARCHAR(100) NOT NULL,
     model VARCHAR(100) NOT NULL,
@@ -154,7 +162,7 @@ CREATE TABLE vehicles (
 -- 8. HOUSES TABLE
 CREATE TABLE houses (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    seller_id CHAR(36) NULL, -- Modified: Nullable for Admin properties
+    seller_id CHAR(36) NULL,
     purpose ENUM('rent', 'sale', 'both') DEFAULT 'rent',
     title VARCHAR(255) NOT NULL,
     description TEXT,
@@ -245,7 +253,7 @@ CREATE TABLE payments (
 CREATE TABLE commissions (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     agent_id CHAR(36) NULL,
-    seller_id CHAR(36) NULL, -- To link the source seller
+    seller_id CHAR(36) NULL,
     booking_id CHAR(36) NOT NULL,
     amount DECIMAL(12,2) NOT NULL,
     commission_type ENUM('system', 'agent', 'seller_payout') NOT NULL DEFAULT 'system',
@@ -312,13 +320,14 @@ CREATE TABLE admin_profiles (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
-    CREATE TABLE notifications (
-        id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-        user_id CHAR(36) NOT NULL,
-        title VARCHAR(255) NOT NULL,
-        message TEXT NOT NULL,
-        type ENUM('booking', 'system', 'payout', 'listing', 'security') NOT NULL,
-        is_read BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
+
+CREATE TABLE notifications (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type ENUM('booking', 'system', 'payout', 'listing', 'security') NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

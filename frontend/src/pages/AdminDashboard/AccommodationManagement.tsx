@@ -1,9 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { 
-  Home, Plus, Edit2, Trash2, X, Upload, Image as ImageIcon, XCircle, 
-  MapPin, Wifi, Car, TreePine, Sparkles, Box, Info, Building2, Calendar
+  Plus, Edit2, Trash2, X, Image as ImageIcon, XCircle, 
+  MapPin, Wifi, Car, TreePine, Sparkles, Box, Building2, Calendar, 
+  Dumbbell, Utensils, Bath, Tv, Waves, ArrowUpCircle, Sofa
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -23,6 +24,8 @@ const AccommodationManagement = () => {
 
   const [formData, setFormData] = useState({
     type: 'apartment',
+    sub_type: 'whole',
+    purpose: 'rent',
     name: '',
     description: '',
     city: 'Kigali',
@@ -30,13 +33,21 @@ const AccommodationManagement = () => {
     street_address: '',
     price_per_night: '',
     price_per_event: '',
+    sale_price: '',
     max_guests: '',
     capacity: '',
     floor_number: '',
+    room_name_number: '',
+    bed_type: 'single',
     wifi: false,
     parking: false,
     garden: false,
     decoration: false,
+    gym: false,
+    kitchen: false,
+    toilet: false,
+    living_room: false,
+    swimming_pool: false,
     has_elevator: false,
     is_furnished: false,
     status: 'available'
@@ -58,9 +69,11 @@ const AccommodationManagement = () => {
 
   const resetForm = () => {
     setFormData({
-        type: 'apartment', name: '', description: '', city: 'Kigali', district: '', street_address: '',
-        price_per_night: '', price_per_event: '', max_guests: '', capacity: '', floor_number: '',
-        wifi: false, parking: false, garden: false, decoration: false, has_elevator: false, is_furnished: false,
+        type: 'apartment', sub_type: 'whole', purpose: 'rent', name: '', description: '', city: 'Kigali', district: '', street_address: '',
+        price_per_night: '', price_per_event: '', sale_price: '', max_guests: '', capacity: '', floor_number: '',
+        room_name_number: '', bed_type: 'single',
+        wifi: false, parking: false, garden: false, decoration: false, gym: false, kitchen: false, 
+        toilet: false, living_room: false, swimming_pool: false, has_elevator: false, is_furnished: false,
         status: 'available'
       });
     setSelectedFiles([]);
@@ -96,6 +109,8 @@ const AccommodationManagement = () => {
     setCurrentId(item.id);
     setFormData({
       type: item.type,
+      sub_type: item.sub_type || 'whole',
+      purpose: item.purpose || 'rent',
       name: item.name,
       description: item.description,
       city: item.city,
@@ -103,13 +118,21 @@ const AccommodationManagement = () => {
       street_address: item.street_address || '',
       price_per_night: item.price_per_night || '',
       price_per_event: item.price_per_event || '',
+      sale_price: item.sale_price || '',
       max_guests: item.max_guests || '',
       capacity: item.capacity || '',
       floor_number: item.floor_number || '',
+      room_name_number: item.room_name_number || '',
+      bed_type: item.bed_type || 'single',
       wifi: !!item.wifi,
       parking: !!item.parking,
       garden: !!item.garden,
       decoration: !!item.decoration,
+      gym: !!item.gym,
+      kitchen: !!item.kitchen,
+      toilet: !!item.toilet,
+      living_room: !!item.living_room,
+      swimming_pool: !!item.swimming_pool,
       has_elevator: !!item.has_elevator,
       is_furnished: !!item.is_furnished,
       status: item.status
@@ -180,6 +203,28 @@ const AccommodationManagement = () => {
                             <option value="event_hall">Event Hall</option>
                         </select>
                     </div>
+                    {formData.type === 'apartment' && (
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Apartment Sub-Type</label>
+                            <select className="w-full p-4 border-2 rounded-2xl font-bold bg-gray-50 focus:border-accent-orange outline-none" value={formData.sub_type} onChange={e => setFormData({...formData, sub_type: e.target.value})}>
+                                <option value="whole">Whole Apartment</option>
+                                <option value="room">Apartment Room </option>
+                            </select>
+                        </div>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {formData.type === 'apartment' && (
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Purpose</label>
+                            <select className="w-full p-4 border-2 rounded-2xl font-bold bg-gray-50 focus:border-accent-orange outline-none" value={formData.purpose} onChange={e => setFormData({...formData, purpose: e.target.value})}>
+                                <option value="rent">For Rent</option>
+                                <option value="sale">For Sale</option>
+                                <option value="both">Both (Rent & Sale)</option>
+                            </select>
+                        </div>
+                    )}
                     <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Listing Name</label><input type="text" className="w-full p-4 border-2 rounded-2xl font-bold bg-gray-50 focus:border-accent-orange outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required /></div>
                 </div>
 
@@ -198,7 +243,22 @@ const AccommodationManagement = () => {
                     <div className="space-y-2"><label className="text-[9px] font-black uppercase text-gray-400">Floor Number</label><input type="number" className="w-full p-4 border-2 border-white rounded-2xl font-bold" value={formData.floor_number} onChange={e => setFormData({...formData, floor_number: e.target.value})} /></div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 bg-orange-50/50 rounded-[2.5rem] border border-orange-100">
+                {(formData.sub_type === 'room' || formData.type === 'hotel_room') && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 bg-gray-50 rounded-[2.5rem] border border-gray-100">
+                        <div className="space-y-2"><label className="text-[9px] font-black uppercase text-gray-400">Room Name / Number</label><input type="text" className="w-full p-4 border-2 border-white rounded-2xl font-bold" value={formData.room_name_number} onChange={e => setFormData({...formData, room_name_number: e.target.value})} /></div>
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black uppercase text-gray-400">Bed Type</label>
+                            <select className="w-full p-4 border-2 border-white rounded-2xl font-bold" value={formData.bed_type} onChange={e => setFormData({...formData, bed_type: e.target.value})}>
+                                <option value="single">Single Bed</option>
+                                <option value="double">Double Bed</option>
+                                <option value="triple">Triple Bed</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-8 bg-orange-50/50 rounded-[2.5rem] border border-orange-100">
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase text-primary-dark flex items-center gap-2"><Calendar size={14}/> Price Per Night (Rwf)</label>
                         <input type="number" className="w-full p-4 border-2 border-white rounded-2xl font-bold" value={formData.price_per_night} onChange={e => setFormData({...formData, price_per_night: e.target.value})} />
@@ -207,18 +267,27 @@ const AccommodationManagement = () => {
                         <label className="text-[10px] font-black uppercase text-primary-dark flex items-center gap-2"><Sparkles size={14}/> Price Per Event (Rwf)</label>
                         <input type="number" className="w-full p-4 border-2 border-white rounded-2xl font-bold" value={formData.price_per_event} onChange={e => setFormData({...formData, price_per_event: e.target.value})} />
                     </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase text-primary-dark flex items-center gap-2"><Box size={14}/> Sale Price (Rwf)</label>
+                        <input type="number" className="w-full p-4 border-2 border-white rounded-2xl font-bold" value={formData.sale_price} onChange={e => setFormData({...formData, sale_price: e.target.value})} />
+                    </div>
                 </div>
 
                 <div className="space-y-6">
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Features & Amenities</label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                         {[ 
                             { id: 'wifi', label: 'WiFi', icon: <Wifi size={20}/> }, 
                             { id: 'parking', label: 'Parking', icon: <Car size={20}/> }, 
                             { id: 'garden', label: 'Garden', icon: <TreePine size={20}/> }, 
+                            { id: 'gym', label: 'Gym', icon: <Dumbbell size={20}/> }, 
+                            { id: 'kitchen', label: 'Kitchen', icon: <Utensils size={20}/> }, 
+                            { id: 'toilet', label: 'Toilet', icon: <Bath size={20}/> }, 
+                            { id: 'living_room', label: 'Living Room', icon: <Tv size={20}/> }, 
+                            { id: 'swimming_pool', label: 'Pool', icon: <Waves size={20}/> }, 
                             { id: 'decoration', label: 'Decoration', icon: <Sparkles size={20}/> }, 
-                            { id: 'has_elevator', label: 'Elevator', icon: <Building2 size={20}/> }, 
-                            { id: 'is_furnished', label: 'Furnished', icon: <Box size={20}/> }
+                            { id: 'has_elevator', label: 'Elevator', icon: <ArrowUpCircle size={20}/> }, 
+                            { id: 'is_furnished', label: 'Furnished', icon: <Sofa size={20}/> }
                         ].map(feat => (
                             <label key={feat.id} className="cursor-pointer group">
                                 <input type="checkbox" className="hidden" checked={(formData as any)[feat.id]} onChange={e => setFormData({...formData, [feat.id]: e.target.checked})} />
@@ -281,12 +350,15 @@ const AccommodationManagement = () => {
               {accommodations.map((item) => {
                 const images = parseImages(item.images);
                 const imageUrl = images[0] ? `${SERVER_BASE_URL}${images[0]}` : 'https://via.placeholder.com/150x100?text=No+Img';
-                const price = item.price_per_night || item.price_per_event;
+                const price = item.price_per_night || item.price_per_event || item.sale_price;
                 return (
                   <tr key={item.id} className="hover:bg-gray-50/50 group transition-colors">
                     <td className="p-6"><div className="w-20 h-12 rounded-xl overflow-hidden border shadow-sm"><img src={imageUrl} className="w-full h-full object-cover" /></div></td>
                     <td className="p-6"><p className="font-bold text-primary-dark text-xs uppercase tracking-tight">{item.name}</p><p className="text-[10px] text-gray-400 font-bold uppercase">{item.district}, {item.city}</p></td>
-                    <td className="p-6"><span className="text-[10px] font-black uppercase text-accent-orange">{item.type.replace('_', ' ')}</span></td>
+                    <td className="p-6">
+                        <span className="text-[10px] font-black uppercase text-accent-orange block">{item.type.replace('_', ' ')}</span>
+                        {item.sub_type && <span className="text-[8px] font-bold text-gray-400 uppercase">({item.sub_type})</span>}
+                    </td>
                     <td className="p-6 font-bold text-primary-dark text-xs whitespace-nowrap">Rwf {Number(price).toLocaleString()}</td>
                     <td className="p-6"><span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${item.status === 'available' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.status}</span></td>
                     <td className="p-6"><div className="flex justify-center gap-2"><button onClick={() => handleEdit(item)} className="p-3 bg-gray-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl transition-all"><Edit2 size={16} /></button><button onClick={() => handleDelete(item.id)} className="p-3 bg-gray-50 text-red-600 hover:bg-red-600 hover:text-white rounded-xl transition-all"><Trash2 size={16} /></button></div></td>

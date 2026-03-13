@@ -5,6 +5,7 @@ export interface Accommodation extends RowDataPacket {
   id: string;
   seller_id: string | null;
   type: 'apartment' | 'hotel_room' | 'event_hall';
+  sub_type?: 'whole' | 'room';
   purpose: 'rent' | 'sale' | 'both';
   name: string;
   description: string;
@@ -19,7 +20,14 @@ export interface Accommodation extends RowDataPacket {
   parking: boolean;
   garden: boolean;
   decoration: boolean;
+  gym: boolean;
+  kitchen: boolean;
+  toilet: boolean;
+  living_room: boolean;
+  swimming_pool: boolean;
   floor_number?: number;
+  room_name_number?: string;
+  bed_type?: 'single' | 'double' | 'triple' | 'other';
   has_elevator?: boolean;
   is_furnished?: boolean;
   status: 'pending_approval' | 'available' | 'unavailable' | 'maintenance' | 'rejected';
@@ -43,6 +51,11 @@ export const getAllAccommodations = async (filters: any): Promise<Accommodation[
   if (filters.type) {
     sql += ' AND type = ?';
     params.push(filters.type);
+  }
+
+  if (filters.sub_type) {
+    sql += ' AND sub_type = ?';
+    params.push(filters.sub_type);
   }
 
   if (filters.city) {
@@ -71,17 +84,19 @@ const toInt = (val: any) => (['true', true, 1, '1', 'on'].includes(val) ? 1 : 0)
 export const createAccommodation = async (data: any): Promise<string> => {
   const sql = `
     INSERT INTO accommodations (
-      id, seller_id, type, purpose, name, description, 
+      id, seller_id, type, sub_type, purpose, name, description, 
       city, district, price_per_night, price_per_event, sale_price,
       max_guests, capacity, wifi, parking, garden, decoration,
-      floor_number, has_elevator, is_furnished,
+      gym, kitchen, toilet, living_room, swimming_pool,
+      floor_number, room_name_number, bed_type, has_elevator, is_furnished,
       status, images, amenities
     )
-    VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   await query(sql, [
     data.seller_id || null,
     data.type,
+    data.sub_type || 'whole',
     data.purpose || 'rent',
     data.name,
     data.description,
@@ -96,7 +111,14 @@ export const createAccommodation = async (data: any): Promise<string> => {
     toInt(data.parking),
     toInt(data.garden),
     toInt(data.decoration),
+    toInt(data.gym),
+    toInt(data.kitchen),
+    toInt(data.toilet),
+    toInt(data.living_room),
+    toInt(data.swimming_pool),
     data.floor_number || null,
+    data.room_name_number || null,
+    data.bed_type || null,
     toInt(data.has_elevator),
     toInt(data.is_furnished),
     data.status || 'pending_approval',
@@ -115,7 +137,10 @@ export const updateAccommodation = async (id: string, data: any): Promise<void> 
   let sql = 'UPDATE accommodations SET ';
   const params: any[] = [];
   
-  const boolFields = ['wifi', 'parking', 'garden', 'decoration', 'has_elevator', 'is_furnished'];
+  const boolFields = [
+    'wifi', 'parking', 'garden', 'decoration', 'gym', 'kitchen', 
+    'toilet', 'living_room', 'swimming_pool', 'has_elevator', 'is_furnished'
+  ];
 
   fields.forEach((field, index) => {
     sql += `${field} = ?${index === fields.length - 1 ? '' : ', '}`;

@@ -50,7 +50,8 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
     if (role === 'client') {
       await connection.execute('INSERT INTO clients (id, user_id, first_name, last_name, phone_number) VALUES (UUID(), ?, ?, ?, ?)', [userId, firstName, lastName, phone]);
     } else if (role === 'agent') {
-      await connection.execute('INSERT INTO agents (id, user_id, first_name, last_name, phone_number, national_id) VALUES (UUID(), ?, ?, ?, ?, ?)', [userId, firstName, lastName, phone, nationalId]);
+      // Corrected: national_id is the column name in DB
+      await connection.execute('INSERT INTO agents (id, user_id, first_name, last_name, phone_number, national_id, status) VALUES (UUID(), ?, ?, ?, ?, ?, "pending")', [userId, firstName, lastName, phone, nationalId]);
     } else if (role === 'seller') {
       await connection.execute('INSERT INTO sellers (id, user_id, first_name, last_name, phone_number, national_id, status) VALUES (UUID(), ?, ?, ?, ?, ?, "pending")', [userId, firstName, lastName, phone, nationalId]);
     }
@@ -69,6 +70,7 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
 
   } catch (error) {
     await connection.rollback();
+    console.error('[AUTH_REGISTER_ERROR]:', error);
     next(error);
   } finally {
     connection.release();

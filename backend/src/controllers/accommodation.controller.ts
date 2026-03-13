@@ -14,7 +14,10 @@ const sanitizeAccommodationData = (body: any, imagePaths: string[] | null) => {
     }
 
     // Process boolean fields
-    const boolFields = ['wifi', 'parking', 'garden', 'decoration', 'has_elevator', 'is_furnished'];
+    const boolFields = [
+        'wifi', 'parking', 'garden', 'decoration', 'gym', 'kitchen', 
+        'toilet', 'living_room', 'swimming_pool', 'has_elevator', 'is_furnished'
+    ];
     boolFields.forEach(field => {
         if (body[field] !== undefined) {
             data[field] = ['true', true, 1, 'on'].includes(body[field]) ? 1 : 0;

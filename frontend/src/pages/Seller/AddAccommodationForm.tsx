@@ -5,25 +5,41 @@ import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Wifi, Car, TreePine, Paintbrush, Building2, ArrowUpCircle, Sofa, X, Image as ImageIcon, Tag } from 'lucide-react';
+import { Wifi, Car, TreePine, Paintbrush, Building2, ArrowUpCircle, Sofa, X, Image as ImageIcon, Dumbbell, Utensils, Bath, Tv, Waves } from 'lucide-react';
+
+const rwandaDistricts = [
+  "Gasabo", "Kicukiro", "Nyarugenge", // Kigali
+  "Burera", "Gakenke", "Gicumbi", "Musanze", "Rulindo", // North
+  "Gisagara", "Huye", "Kamonyi", "Muhanga", "Nyamagabe", "Nyanza", "Nyaruguru", "Ruhango", // South
+  "Bugesera", "Gatsibo", "Kayonza", "Kirehe", "Ngoma", "Nyagatare", "Rwamagana", // East
+  "Karongi", "Ngororero", "Nyabihu", "Nyamasheke", "Rubavu", "Rusizi", "Rutsiro" // West
+].sort();
 
 const schema = z.object({
   type: z.enum(['apartment', 'hotel_room', 'event_hall']),
+  sub_type: z.enum(['whole', 'room']).optional(),
   purpose: z.enum(['rent', 'sale', 'both']).default('rent'),
   name: z.string().min(5, 'Name must be at least 5 characters'),
   description: z.string().min(20, 'Description must be at least 20 characters'),
-  city: z.string().min(1, 'City is required'),
-  district: z.string().min(1, 'District is required'),
+  city: z.string().min(1, 'District is required'),
+  district: z.string().min(1, 'Sector/Neighborhood is required'),
   price_per_night: z.preprocess(val => val ? Number(val) : undefined, z.number().positive().optional()),
   price_per_event: z.preprocess(val => val ? Number(val) : undefined, z.number().positive().optional()),
   sale_price: z.preprocess(val => val ? Number(val) : undefined, z.number().positive().optional()),
   max_guests: z.preprocess(val => val ? Number(val) : undefined, z.number().positive().optional()),
   capacity: z.preprocess(val => val ? Number(val) : undefined, z.number().positive().optional()),
   floor_number: z.preprocess(val => val ? Number(val) : undefined, z.number().optional()),
+  room_name_number: z.string().optional(),
+  bed_type: z.enum(['single', 'double', 'triple', 'other']).optional(),
   wifi: z.boolean().optional(),
   parking: z.boolean().optional(),
   garden: z.boolean().optional(),
   decoration: z.boolean().optional(),
+  gym: z.boolean().optional(),
+  kitchen: z.boolean().optional(),
+  toilet: z.boolean().optional(),
+  living_room: z.boolean().optional(),
+  swimming_pool: z.boolean().optional(),
   has_elevator: z.boolean().optional(),
   is_furnished: z.boolean().optional(),
   images: z.any().refine(files => files?.length > 0, 'At least one image is required.'),
@@ -46,11 +62,18 @@ const AddAccommodationForm = () => {
     resolver: zodResolver(schema), 
     defaultValues: { 
         type: 'apartment',
+        sub_type: 'whole',
         purpose: 'rent',
+        city: 'Nyarugenge',
         wifi: false,
         parking: false,
         garden: false,
         decoration: false,
+        gym: false,
+        kitchen: false,
+        toilet: false,
+        living_room: false,
+        swimming_pool: false,
         has_elevator: false,
         is_furnished: false,
         images: null
@@ -58,6 +81,7 @@ const AddAccommodationForm = () => {
   });
   
   const type = watch('type');
+  const sub_type = watch('sub_type');
   const purpose = watch('purpose');
   const selectedImages = watch('images');
 
@@ -119,6 +143,18 @@ const AddAccommodationForm = () => {
 
             {type === 'apartment' && (
                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Apartment Type</label>
+                    <select {...register('sub_type')} className="w-full p-4 border-2 border-gray-100 rounded-2xl font-bold text-primary-dark focus:border-accent-orange outline-none transition-all bg-gray-50">
+                        <option value="whole">Whole Apartment</option>
+                        <option value="room">Room for Room</option>
+                    </select>
+                </div>
+            )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {type === 'apartment' && (
+                <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Listing Purpose</label>
                     <select {...register('purpose')} className="w-full p-4 border-2 border-gray-100 rounded-2xl font-bold text-primary-dark focus:border-accent-orange outline-none transition-all bg-gray-50">
                         <option value="rent">For Rent</option>
@@ -143,11 +179,13 @@ const AddAccommodationForm = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">City</label>
-                <input {...register('city')} className="w-full p-4 border-2 border-gray-100 rounded-2xl font-bold text-primary-dark focus:border-accent-orange outline-none transition-all bg-gray-50" />
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">District (City)</label>
+                <select {...register('city')} className="w-full p-4 border-2 border-gray-100 rounded-2xl font-bold text-primary-dark focus:border-accent-orange outline-none transition-all bg-gray-50">
+                    {rwandaDistricts.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
             </div>
             <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">District</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sector / Neighborhood</label>
                 <input {...register('district')} className="w-full p-4 border-2 border-gray-100 rounded-2xl font-bold text-primary-dark focus:border-accent-orange outline-none transition-all bg-gray-50" />
             </div>
         </div>
@@ -157,7 +195,7 @@ const AddAccommodationForm = () => {
             {type === 'event_hall' ? (
                 <>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Price per Event (USD)</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Price per Event (RWF)</label>
                         <input type="number" {...register('price_per_event')} className="w-full p-4 border-2 border-white rounded-2xl font-bold text-primary-dark focus:border-accent-orange outline-none shadow-sm" />
                     </div>
                     <div className="space-y-2">
@@ -169,13 +207,13 @@ const AddAccommodationForm = () => {
                 <>
                     {(purpose === 'rent' || purpose === 'both' || type === 'hotel_room') && (
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Price per Night (USD)</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Price per Night (RWF)</label>
                             <input type="number" {...register('price_per_night')} className="w-full p-4 border-2 border-white rounded-2xl font-bold text-primary-dark focus:border-accent-orange outline-none shadow-sm" />
                         </div>
                     )}
                     {(purpose === 'sale' || purpose === 'both') && type === 'apartment' && (
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sale Price (USD)</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sale Price (RWF)</label>
                             <input type="number" {...register('sale_price')} className="w-full p-4 border-2 border-white rounded-2xl font-bold text-primary-dark focus:border-accent-orange outline-none shadow-sm" />
                         </div>
                     )}
@@ -189,14 +227,31 @@ const AddAccommodationForm = () => {
 
         {/* Type Specific Details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {type === 'hotel_room' && (
+            {(type === 'hotel_room' || type === 'apartment') && (
                 <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Floor Number</label>
                     <input type="number" {...register('floor_number')} className="w-full p-4 border-2 border-gray-100 rounded-2xl font-bold text-primary-dark focus:border-accent-orange outline-none transition-all bg-gray-50" />
                 </div>
             )}
+            {(sub_type === 'room' || type === 'hotel_room') && (
+                <>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Room Name / Number</label>
+                        <input {...register('room_name_number')} className="w-full p-4 border-2 border-gray-100 rounded-2xl font-bold text-primary-dark focus:border-accent-orange outline-none transition-all bg-gray-50" />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Bed Type</label>
+                        <select {...register('bed_type')} className="w-full p-4 border-2 border-gray-100 rounded-2xl font-bold text-primary-dark focus:border-accent-orange outline-none transition-all bg-gray-50">
+                            <option value="single">Single Bed</option>
+                            <option value="double">Double Bed</option>
+                            <option value="triple">Triple Bed</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </>
+            )}
             {type === 'apartment' && (
-                <div className="flex flex-col md:flex-row gap-6">
+                <div className="flex flex-col md:flex-row gap-6 items-center">
                     <label className="flex items-center gap-3 cursor-pointer group">
                         <input type="checkbox" {...register('has_elevator')} className="hidden" />
                         <div className={`p-3 rounded-xl border-2 transition-all ${watch('has_elevator') ? 'bg-accent-orange border-accent-orange text-white' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
@@ -223,6 +278,11 @@ const AddAccommodationForm = () => {
                     { id: 'wifi', label: 'WiFi', icon: <Wifi size={20}/> },
                     { id: 'parking', label: 'Parking', icon: <Car size={20}/> },
                     { id: 'garden', label: 'Garden', icon: <TreePine size={20}/> },
+                    { id: 'gym', label: 'Gym', icon: <Dumbbell size={20}/> },
+                    { id: 'kitchen', label: 'Kitchen', icon: <Utensils size={20}/> },
+                    { id: 'toilet', label: 'Toilet', icon: <Bath size={20}/> },
+                    { id: 'living_room', label: 'Living Room', icon: <Tv size={20}/> },
+                    { id: 'swimming_pool', label: 'Pool', icon: <Waves size={20}/> },
                     { id: 'decoration', label: 'Decoration', icon: <Paintbrush size={20}/> },
                 ].map(feat => (
                     <label key={feat.id} className="cursor-pointer group">

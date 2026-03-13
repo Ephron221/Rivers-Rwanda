@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { 
+  getAllAgents,
   getPendingAgents, 
   approveAgent, 
   rejectAgent, 
@@ -42,6 +43,7 @@ router.patch('/users/:id', updateUserRole);
 router.delete('/users/:id', deleteUser);
 
 // Agent Management
+router.get('/agents', getAllAgents);
 router.get('/agents/pending', getPendingAgents);
 router.patch('/agents/:id/approve', approveAgent);
 router.patch('/agents/:id/reject', rejectAgent);

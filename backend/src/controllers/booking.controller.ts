@@ -11,7 +11,9 @@ import { getAgentId } from '../utils/agent.utils';
 import { sendBookingConfirmationEmail } from '../services/email.service';
 import QRCode from 'qrcode';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
-import { query } from '../database/connection';
+import { query, pool } from '../database/connection';
+import { v4 as uuidv4 } from 'uuid';
+import { hashPassword } from '../utils/bcrypt.utils';
 
 const getRelativePath = (fullPath: string): string => {
     const uploadsDir = 'uploads';
@@ -55,18 +57,25 @@ async function processConfirmedBooking(bookingId: string) {
 
     // 3. Commissions
     const totalAmount = Number(booking.total_amount);
+    
+    // System Fee (10% standard)
     const systemFee = totalAmount * 0.10;
-    let agentFee = 0;
-
+    
+    // Agent Commission (5%)
     if (booking.agent_id) {
-        agentFee = totalAmount * 0.05;
-        await CommissionModel.createCommission({
-            booking_id: bookingId,
-            amount: agentFee,
-            commission_type: 'agent',
-            agent_id: booking.agent_id,
-            status: 'pending'
-        });
+        // Fetch agent to ensure they are approved before paying out
+        const [agent] = await query<any[]>('SELECT status FROM agents WHERE id = ?', [booking.agent_id]);
+        
+        if (agent && agent.status === 'approved') {
+            const agentFee = totalAmount * 0.05;
+            await CommissionModel.createCommission({
+                booking_id: bookingId,
+                amount: agentFee,
+                commission_type: 'agent',
+                agent_id: booking.agent_id,
+                status: 'approved' // Set to approved because payment is confirmed
+            });
+        }
     }
 
     await CommissionModel.createCommission({
@@ -125,64 +134,144 @@ async function processConfirmedBooking(bookingId: string) {
 }
 
 export const createBooking = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  const connection = await pool.getConnection();
   try {
     const userId = req.user?.userId;
     const userRole = req.user?.role;
     if (!userId) return res.status(401).json({ success: false, message: 'User not authenticated' });
 
+    await connection.beginTransaction();
+
     let clientId: string | null = null;
     let agentId: string | null = null;
 
     if (userRole === 'client') {
-        clientId = await getClientIdByUserId(userId);
+        const [client] = await connection.execute<any[]>('SELECT id FROM clients WHERE user_id = ?', [userId]);
+        clientId = client[0]?.id || null;
     } else if (userRole === 'agent') {
-        agentId = await getAgentId(userId);
+        // 1. Verify Agent Status
+        const [agent] = await connection.execute<any[]>('SELECT id, status FROM agents WHERE user_id = ?', [userId]);
+        
+        if (!agent[0]) {
+            await connection.rollback();
+            return res.status(404).json({ success: false, message: 'Agent profile not found.' });
+        }
+
+        if (agent[0].status !== 'approved') {
+            await connection.rollback();
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Your agent account is pending approval. You cannot make bookings until verified.' 
+            });
+        }
+
+        agentId = agent[0].id;
+
+        // 2. Handle Client Discovery/Creation
         const clientEmail = req.body.email;
+        const clientFullName = req.body.fullName || "Valued Client";
+        const clientPhone = req.body.phone || "";
+
         if (clientEmail) {
-            const clientUser = await findUserByEmail(clientEmail);
-            if (clientUser) clientId = await getClientIdByUserId(clientUser.id);
+            const [users] = await connection.execute<any[]>('SELECT id FROM users WHERE email = ?', [clientEmail]);
+            const clientUser = users[0];
+            
+            if (clientUser) {
+                const [profiles] = await connection.execute<any[]>('SELECT id FROM clients WHERE user_id = ?', [clientUser.id]);
+                clientId = profiles[0]?.id || null;
+                
+                if (!clientId) {
+                    const nameParts = clientFullName.trim().split(' ');
+                    const fName = nameParts[0];
+                    const lName = nameParts.slice(1).join(' ') || ' ';
+                    
+                    await connection.execute(
+                        'INSERT INTO clients (id, user_id, first_name, last_name, phone_number) VALUES (UUID(), ?, ?, ?, ?)',
+                        [clientUser.id, fName, lName, clientPhone]
+                    );
+                    
+                    const [newProfile] = await connection.execute<any[]>('SELECT id FROM clients WHERE user_id = ?', [clientUser.id]);
+                    clientId = newProfile[0].id;
+                }
+            } else {
+                const newUserId = uuidv4();
+                const tempPassword = await hashPassword('Rivers@' + Math.floor(1000 + Math.random() * 9000));
+                
+                await connection.execute(
+                    'INSERT INTO users (id, email, password_hash, role, status, email_verified) VALUES (?, ?, ?, "client", "active", 1)',
+                    [newUserId, clientEmail, tempPassword]
+                );
+
+                const nameParts = clientFullName.trim().split(' ');
+                const fName = nameParts[0];
+                const lName = nameParts.slice(1).join(' ') || ' ';
+
+                await connection.execute(
+                    'INSERT INTO clients (id, user_id, first_name, last_name, phone_number) VALUES (UUID(), ?, ?, ?, ?)',
+                    [newUserId, fName, lName, clientPhone]
+                );
+
+                const [newProfile] = await connection.execute<any[]>('SELECT id FROM clients WHERE user_id = ?', [newUserId]);
+                clientId = newProfile[0].id;
+            }
         }
     }
 
     if (!clientId && userRole !== 'admin') {
-        return res.status(404).json({ success: false, message: 'Client profile not found.' });
+        await connection.rollback();
+        return res.status(404).json({ success: false, message: 'Client profile not found. Please provide client email.' });
     }
 
-    const bookingData = { 
-        ...req.body, 
-        client_id: clientId,
-        agent_id: agentId,
-        total_amount: parseFloat(req.body.total_amount)
-    };
-    
-    const newBooking = await BookingModel.createBooking(bookingData);
+    // 3. Create Booking Manually to avoid Connection Pool Lock
+    const bookingId = uuidv4();
+    const reference = 'RR' + Math.random().toString(36).substr(2, 9).toUpperCase();
+    const totalAmount = parseFloat(req.body.total_amount);
+
+    await connection.execute(
+        `INSERT INTO bookings (id, booking_type, booking_reference, client_id, agent_id, accommodation_id, vehicle_id, house_id, total_amount, booking_status, payment_status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending')`,
+        [
+            bookingId,
+            req.body.booking_type,
+            reference,
+            clientId,
+            agentId,
+            req.body.accommodation_id || null,
+            req.body.vehicle_id || null,
+            req.body.house_id || null,
+            totalAmount
+        ]
+    );
 
     if (req.file) {
-      await PaymentModel.createPayment({
-        booking_id: newBooking.id,
-        amount: newBooking.total_amount,
-        payment_method: req.body.payment_method || 'bank_transfer',
-        payment_proof_path: getRelativePath(req.file.path)
-      });
+      await connection.execute(
+        'INSERT INTO payments (id, booking_id, amount, payment_method, payment_proof_path, status) VALUES (UUID(), ?, ?, ?, ?, "pending")',
+        [bookingId, totalAmount, req.body.payment_method || 'bank_transfer', getRelativePath(req.file.path)]
+      );
     }
+
+    await connection.commit();
 
     await NotificationModel.notifyAdmins(
         'New Booking Request',
-        `A new booking request (${newBooking.booking_reference}) has been submitted for review.`,
+        `A new booking request (${reference}) has been submitted.`,
         'booking'
     );
     
     res.status(201).json({ 
         success: true, 
-        message: 'Booking request submitted. Please wait for admin verification.', 
+        message: 'Booking submitted successfully.', 
         data: { 
-            bookingId: newBooking.id, 
-            bookingReference: newBooking.booking_reference,
+            bookingId: bookingId, 
+            bookingReference: reference,
             isAutomatic: false
         } 
     });
   } catch (error) {
+    await connection.rollback();
     next(error);
+  } finally {
+    connection.release();
   }
 };
 

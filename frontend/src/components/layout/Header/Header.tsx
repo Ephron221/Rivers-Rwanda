@@ -116,7 +116,14 @@ const Header = () => {
       name: 'Accommodations',
       path: '/accommodations',
       dropdown: [
-        { name: 'Apartments for Rent', path: '/accommodations?type=apartment&purpose=rent' },
+        { 
+          name: 'Apartments for Rent', 
+          path: '/accommodations?type=apartment&purpose=rent',
+          submenu: [
+            { name: 'Whole Apartment', path: '/accommodations?type=apartment&purpose=rent&sub_type=whole' },
+            { name: 'Apartment Room', path: '/accommodations?type=apartment&purpose=rent&sub_type=room' }
+          ]
+        },
         { name: 'Apartments for Sale', path: '/accommodations?type=apartment&purpose=sale' },
         { name: 'Hotel Rooms', path: '/accommodations?type=hotel_room' },
         { name: 'Event Halls', path: '/accommodations?type=event_hall' }
@@ -172,17 +179,33 @@ const Header = () => {
                       initial="hidden"
                       animate="visible"
                       exit="hidden"
-                      className="absolute top-full left-0 mt-4 w-56 bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100"
+                      className="absolute top-full left-0 mt-4 w-64 bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100"
                     >
                       <div className="p-2">
                         {link.dropdown.map(dLink => (
-                          <Link
-                            key={dLink.name}
-                            to={dLink.path}
-                            className="flex items-center px-4 py-3 text-xs font-black uppercase tracking-widest text-primary-dark hover:bg-accent-orange hover:text-white rounded-xl transition-all duration-200"
-                          >
-                            {dLink.name}
-                          </Link>
+                          <div key={dLink.name} className="relative group/sub">
+                            <Link
+                              to={dLink.path}
+                              className="flex items-center justify-between px-4 py-3 text-xs font-black uppercase tracking-widest text-primary-dark hover:bg-accent-orange hover:text-white rounded-xl transition-all duration-200"
+                            >
+                              {dLink.name}
+                              {(dLink as any).submenu && <ChevronDown size={14} className="-rotate-90 group-hover/sub:rotate-0 transition-transform" />}
+                            </Link>
+                            
+                            {(dLink as any).submenu && (
+                              <div className="hidden group-hover/sub:block pl-4 pb-2">
+                                {(dLink as any).submenu.map((sub: any) => (
+                                  <Link
+                                    key={sub.name}
+                                    to={sub.path}
+                                    className="block px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-accent-orange transition-colors"
+                                  >
+                                    {sub.name}
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
                     </motion.div>
@@ -366,13 +389,27 @@ const Header = () => {
                                 className="overflow-hidden space-y-3 pl-4 border-l border-accent-orange/30"
                               >
                                 {link.dropdown.map(dLink => (
-                                  <Link
-                                    key={dLink.path}
-                                    to={dLink.path}
-                                    className="block text-sm font-bold text-gray-400 hover:text-white transition-colors py-1"
-                                  >
-                                    {dLink.name}
-                                  </Link>
+                                  <div key={dLink.path}>
+                                    <Link
+                                      to={dLink.path}
+                                      className="block text-sm font-bold text-gray-400 hover:text-white transition-colors py-1"
+                                    >
+                                      {dLink.name}
+                                    </Link>
+                                    {(dLink as any).submenu && (
+                                      <div className="pl-4 space-y-2 mt-1">
+                                        {(dLink as any).submenu.map((sub: any) => (
+                                          <Link
+                                            key={sub.path}
+                                            to={sub.path}
+                                            className="block text-xs font-medium text-gray-500 hover:text-accent-orange transition-colors"
+                                          >
+                                            {sub.name}
+                                          </Link>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
                                 ))}
                               </motion.div>
                             )}

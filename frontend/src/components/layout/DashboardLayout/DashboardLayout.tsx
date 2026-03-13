@@ -14,7 +14,8 @@ import {
   Menu,
   X,
   Globe,
-  Package
+  Package,
+  UserCheck
 } from 'lucide-react';
 import Footer from '../Footer/Footer'; // Import the main footer
 
@@ -54,6 +55,7 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
     admin: [
       { label: 'Overview', path: '/admin/dashboard', icon: <LayoutDashboard size={20} /> },
       { label: 'Users', path: '/admin/users', icon: <UsersIcon size={20} /> },
+      { label: 'Agents', path: '/admin/agents', icon: <UserCheck size={20} /> },
       { label: 'Sellers', path: '/admin/sellers', icon: <ShieldCheck size={20} /> },
       { label: 'Products', path: '/admin/products', icon: <Package size={20} /> },
       { label: 'Commissions', path: '/admin/commissions', icon: <Banknote size={20} /> },

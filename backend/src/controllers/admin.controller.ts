@@ -69,14 +69,35 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const getPendingAgents = async (req: Request, res: Response, next: NextFunction) => {
+export const getAllAgents = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const sql = 'SELECT * FROM agents WHERE status = "pending"';
+    const sql = `
+        SELECT a.*, u.email, u.status as user_status 
+        FROM agents a
+        JOIN users u ON a.user_id = u.id
+        ORDER BY a.created_at DESC
+    `;
     const agents = await query(sql);
     res.status(200).json({ success: true, data: agents });
   } catch (error) {
     next(error);
   }
+};
+
+export const getPendingAgents = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const sql = `
+            SELECT a.*, u.email, u.status as user_status 
+            FROM agents a
+            JOIN users u ON a.user_id = u.id
+            WHERE a.status = 'pending'
+            ORDER BY a.created_at DESC
+        `;
+        const agents = await query(sql);
+        res.status(200).json({ success: true, data: agents });
+    } catch (error) {
+        next(error);
+    }
 };
 
 export const approveAgent = async (req: Request, res: Response, next: NextFunction) => {
@@ -85,7 +106,7 @@ export const approveAgent = async (req: Request, res: Response, next: NextFuncti
     const sql = 'UPDATE agents SET status = "approved" WHERE id = ?';
     await query(sql, [id]);
     
-    const userSql = 'UPDATE users SET status = "active", role = "agent" WHERE id = (SELECT user_id FROM agents WHERE id = ?)';
+    const userSql = 'UPDATE users SET status = "active" WHERE id = (SELECT user_id FROM agents WHERE id = ?)';
     await query(userSql, [id]);
 
     res.status(200).json({ success: true, message: 'Agent approved successfully' });
@@ -324,11 +345,11 @@ export const verifyBookingPayment = async (req: Request, res: Response, next: Ne
     await query(`UPDATE payments SET status = 'completed', verified_at = CURRENT_TIMESTAMP WHERE booking_id = ?`, [bookingId]);
     await query(`UPDATE bookings SET payment_status = 'paid', booking_status = 'confirmed' WHERE id = ?`, [bookingId]);
 
-    // 2. Fetch booking details to find the associated property
+    // 2. Fetch booking details
     const booking = await BookingModel.getBookingById(bookingId);
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
 
-    // 3. Update associated property status to hide it from public listing
+    // 3. Update associated property status
     if (booking.house_id) {
         const status = booking.booking_type === 'house_rent' ? 'rented' : 'purchased';
         await query(`UPDATE houses SET status = ? WHERE id = ?`, [status, booking.house_id]);
@@ -339,7 +360,32 @@ export const verifyBookingPayment = async (req: Request, res: Response, next: Ne
         await query(`UPDATE accommodations SET status = 'unavailable' WHERE id = ?`, [booking.accommodation_id]);
     }
 
-    res.status(200).json({ success: true, message: 'Payment verified, booking confirmed, and property updated.' });
+    // 4. Calculate Commissions
+    const totalAmount = Number(booking.total_amount);
+    
+    // Agent Commission (5%)
+    if (booking.agent_id) {
+        const agentCommission = totalAmount * 0.05;
+        await CommissionModel.createCommission({
+            agent_id: booking.agent_id,
+            booking_id: bookingId,
+            amount: agentCommission,
+            commission_type: 'agent',
+            status: 'approved'
+        });
+    }
+
+    // System Fee (10% - Agent 5% if exists)
+    const systemFeeRate = booking.agent_id ? 0.05 : 0.10;
+    const systemFee = totalAmount * systemFeeRate;
+    await CommissionModel.createCommission({
+        booking_id: bookingId,
+        amount: systemFee,
+        commission_type: 'system',
+        status: 'approved'
+    });
+
+    res.status(200).json({ success: true, message: 'Payment verified, booking confirmed, and commissions generated.' });
   } catch (error) {
     console.error('[VERIFY_PAYMENT_ERROR]:', error);
     next(error);
