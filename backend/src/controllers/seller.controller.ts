@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import * as SellerModel from '../models/Seller.model';
 import * as UserModel from '../models/User.model';
+import * as CommissionModel from '../models/Commission.model';
 import { query } from '../database/connection';
 import bcrypt from 'bcryptjs';
 import { sendOtpEmail } from '../services/email.service';
@@ -97,8 +98,6 @@ export const getSellerProducts = async (req: AuthenticatedRequest, res: Response
             return res.status(200).json({ success: true, data: [] });
         }
 
-        // Updated queries to include 'purpose' and ensure consistent naming
-        // For houses, we determine purpose based on price availability
         const houses = await query(`
             SELECT id, title as name, 'house' as type, 
             CASE WHEN monthly_rent_price IS NOT NULL AND purchase_price IS NOT NULL THEN 'both'
@@ -113,7 +112,6 @@ export const getSellerProducts = async (req: AuthenticatedRequest, res: Response
 
         const allProducts = [...(houses as any[]), ...(accommodations as any[]), ...(vehicles as any[])];
         
-        // Sort by date: most recent first
         allProducts.sort((a, b) => {
             const dateA = new Date(a.created_at).getTime();
             const dateB = new Date(b.created_at).getTime();
@@ -123,6 +121,45 @@ export const getSellerProducts = async (req: AuthenticatedRequest, res: Response
         res.status(200).json({ success: true, data: allProducts });
     } catch (error) {
         console.error('[GET_SELLER_PRODUCTS_ERROR]:', error);
+        next(error);
+    }
+};
+
+export const getMyEarnings = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.user?.userId;
+        const sellerId = await UserModel.getSellerIdByUserId(userId!);
+        
+        if (!sellerId) {
+            return res.status(404).json({ success: false, message: 'Seller profile not found.' });
+        }
+
+        const commissions = await CommissionModel.getCommissionsBySellerId(sellerId);
+        res.status(200).json({ success: true, data: commissions });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const confirmPayoutReceipt = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user?.userId;
+        const sellerId = await UserModel.getSellerIdByUserId(userId!);
+        
+        const [commission] = await query<any[]>('SELECT * FROM commissions WHERE id = ? AND seller_id = ?', [id, sellerId]);
+        
+        if (!commission) {
+            return res.status(404).json({ success: false, message: 'Payout record not found or unauthorized.' });
+        }
+
+        if (commission.status !== 'paid') {
+            return res.status(400).json({ success: false, message: 'Payout has not been marked as paid by Admin yet.' });
+        }
+
+        await CommissionModel.updateCommissionStatus(id, 'completed');
+        res.status(200).json({ success: true, message: 'Payout receipt confirmed. Funds received.' });
+    } catch (error) {
         next(error);
     }
 };

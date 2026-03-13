@@ -50,6 +50,7 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
     seller: [
       { label: 'Dashboard', path: '/seller/dashboard', icon: <LayoutDashboard size={20} /> },
       { label: 'My Products', path: '/seller/products', icon: <Package size={20} /> },
+      { label: 'Earnings', path: '/seller/earnings', icon: <Banknote size={20} /> },
       { label: 'Profile', path: '/seller/profile', icon: <User size={20} /> },
     ],
     admin: [

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
-import { BookOpen, Download, Printer, Eye, X, XCircle } from 'lucide-react';
+import { BookOpen, Download, Printer, Eye, X, XCircle, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Invoice from '../../components/common/Invoice';
 
@@ -50,6 +50,15 @@ const ClientBookings = () => {
       }
   }
 
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
   if (loading) return (
     <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-orange"></div></div>
   );
@@ -94,7 +103,7 @@ const ClientBookings = () => {
                   <thead className="bg-gray-50/50 text-text-light uppercase text-[10px] font-black tracking-[0.2em]">
                     <tr>
                       <th className="px-8 py-6">Reference</th>
-                      <th className="px-8 py-6">Details</th>
+                      <th className="px-8 py-6">Details & Dates</th>
                       <th className="px-8 py-6">Booking Status</th>
                       <th className="px-8 py-6">Payment Status</th>
                       <th className="px-8 py-6">Amount</th>
@@ -109,7 +118,16 @@ const ClientBookings = () => {
                         </td>
                         <td className="px-8 py-6">
                           <p className="font-bold text-primary-dark uppercase tracking-tight">{b.booking_type.replace('_', ' ')}</p>
-                          <p className="text-xs text-gray-400 font-semibold">{new Date(b.created_at).toLocaleDateString()}</p>
+                          <div className="mt-2 flex flex-col gap-1">
+                            <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                              <Calendar size={12} className="text-accent-orange" />
+                              <span>From: {formatDate(b.start_date)}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                              <Calendar size={12} className="text-red-400" />
+                              <span>To: {formatDate(b.end_date)}</span>
+                            </div>
+                          </div>
                         </td>
                         <td className="px-8 py-6">
                           <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-2 w-fit ${

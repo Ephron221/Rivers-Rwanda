@@ -76,3 +76,18 @@ export const uploadPaymentProof = multer({
   },
   limits: { fileSize: 1024 * 1024 * 5 } // 5MB
 }).single('payment_proof');
+
+export const uploadPayoutProof = multer({
+  storage: createStorage('payout-proofs'),
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|pdf/;
+    const mimetype = allowedTypes.test(file.mimetype);
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    }
+    cb(new Error('Invalid file type. Only JPG, PNG, and PDF are allowed.'));
+  },
+  limits: { fileSize: 1024 * 1024 * 5 } // 5MB
+}).single('payout_proof');

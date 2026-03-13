@@ -6,7 +6,7 @@ import * as VehicleModel from '../models/Vehicle.model';
 import * as HouseModel from '../models/House.model';
 import * as CommissionModel from '../models/Commission.model';
 import * as NotificationModel from '../models/Notification.model';
-import { getClientIdByUserId, findUserByEmail } from '../models/User.model';
+import { getClientIdByUserId, findUserByEmail, getSellerIdByUserId } from '../models/User.model';
 import { getAgentId } from '../utils/agent.utils';
 import { sendBookingConfirmationEmail } from '../services/email.service';
 import QRCode from 'qrcode';
@@ -35,37 +35,32 @@ async function processConfirmedBooking(bookingId: string) {
     await BookingModel.updateBookingPaymentStatus(bookingId, 'paid');
 
     let propertyName = "Property";
-    let sellerId = booking.seller_id;
+    let sellerId: string | undefined = booking.seller_id ?? undefined;
 
     // 2. Resolve Property Details and Update Status
     if (booking.house_id) {
         const house = await HouseModel.getHouseById(booking.house_id);
         propertyName = house?.title || "House";
-        if (!sellerId) sellerId = house?.seller_id;
+        if (!sellerId) sellerId = house?.seller_id ?? undefined;
         await HouseModel.updateHouseStatus(booking.house_id, booking.booking_type.includes('purchase') ? 'purchased' : 'rented');
     } else if (booking.accommodation_id) {
         const acc = await AccommodationModel.getAccommodationById(booking.accommodation_id);
         propertyName = acc?.name || "Accommodation";
-        if (!sellerId) sellerId = acc?.seller_id;
+        if (!sellerId) sellerId = acc?.seller_id ?? undefined;
         await AccommodationModel.updateAccommodationStatus(booking.accommodation_id, 'unavailable');
     } else if (booking.vehicle_id) {
         const veh = await VehicleModel.getVehicleById(booking.vehicle_id);
         propertyName = `${veh?.make} ${veh?.model}` || "Vehicle";
-        if (!sellerId) sellerId = veh?.seller_id;
+        if (!sellerId) sellerId = veh?.seller_id ?? undefined;
         await VehicleModel.updateVehicleStatus(booking.vehicle_id, booking.booking_type.includes('purchase') ? 'sold' : 'rented');
     }
 
     // 3. Commissions
     const totalAmount = Number(booking.total_amount);
     
-    // System Fee (10% standard)
-    const systemFee = totalAmount * 0.10;
-    
     // Agent Commission (5%)
     if (booking.agent_id) {
-        // Fetch agent to ensure they are approved before paying out
         const [agent] = await query<any[]>('SELECT status FROM agents WHERE id = ?', [booking.agent_id]);
-        
         if (agent && agent.status === 'approved') {
             const agentFee = totalAmount * 0.05;
             await CommissionModel.createCommission({
@@ -73,16 +68,30 @@ async function processConfirmedBooking(bookingId: string) {
                 amount: agentFee,
                 commission_type: 'agent',
                 agent_id: booking.agent_id,
-                status: 'approved' // Set to approved because payment is confirmed
+                status: 'approved'
             });
         }
     }
 
+    // Seller Payout (Total - 10%)
+    if (sellerId) {
+        const sellerPayout = totalAmount * 0.90;
+        await CommissionModel.createCommission({
+            booking_id: bookingId,
+            amount: sellerPayout,
+            commission_type: 'seller_payout',
+            seller_id: sellerId,
+            status: 'approved'
+        });
+    }
+
+    // System Fee (10% - Agent 5% if exists)
+    const systemFeeRate = booking.agent_id ? 0.05 : 0.10;
+    const systemFee = totalAmount * systemFeeRate;
     await CommissionModel.createCommission({
         booking_id: bookingId,
         amount: systemFee,
         commission_type: 'system',
-        seller_id: sellerId,
         status: 'approved'
     });
 
@@ -228,17 +237,20 @@ export const createBooking = async (req: AuthenticatedRequest, res: Response, ne
     const totalAmount = parseFloat(req.body.total_amount);
 
     await connection.execute(
-        `INSERT INTO bookings (id, booking_type, booking_reference, client_id, agent_id, accommodation_id, vehicle_id, house_id, total_amount, booking_status, payment_status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending')`,
+        `INSERT INTO bookings (id, booking_type, booking_reference, client_id, agent_id, seller_id, accommodation_id, vehicle_id, house_id, start_date, end_date, total_amount, booking_status, payment_status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending')`,
         [
             bookingId,
             req.body.booking_type,
             reference,
             clientId,
             agentId,
+            req.body.seller_id || null,
             req.body.accommodation_id || null,
             req.body.vehicle_id || null,
             req.body.house_id || null,
+            req.body.start_date || null,
+            req.body.end_date || null,
             totalAmount
         ]
     );
@@ -352,6 +364,21 @@ export const getMyBookings = async (req: AuthenticatedRequest, res: Response, ne
   } catch (error) {
     next(error);
   }
+};
+
+export const getSellerBookings = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ success: false, message: 'User not authenticated' });
+        
+        const sellerId = await getSellerIdByUserId(userId);
+        if (!sellerId) return res.status(404).json({ success: false, message: 'Seller profile not found.' });
+        
+        const bookings = await BookingModel.getBookingsBySellerId(sellerId);
+        res.status(200).json({ success: true, data: bookings });
+    } catch (error) {
+        next(error);
+    }
 };
 
 export const cancelBooking = async (req: Request, res: Response, next: NextFunction) => {

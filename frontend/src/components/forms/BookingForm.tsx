@@ -1,21 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { Banknote, Smartphone } from 'lucide-react';
+import { Banknote, Smartphone, Calendar as CalendarIcon } from 'lucide-react';
 import SuccessModal from '../common/SuccessModal';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Schema for the form ---
 const schema = z.object({
   fullName: z.string().min(3, 'Full name is required'),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(10, 'Invalid phone number'),
-  duration: z.preprocess(
-    (val) => (val ? parseInt(String(val), 10) : 1),
-    z.number().min(1, 'Duration must be at least 1').optional()
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().optional(),
+  numMonths: z.preprocess(
+    (val) => (val ? parseInt(String(val), 10) : 2),
+    z.number().min(2, 'Minimum rental period is 2 months').optional()
   ),
   payment_method: z.enum(['bank_transfer', 'mobile_money']),
   payment_proof: z.any().refine(files => files?.length > 0, 'Payment proof is required.'),
@@ -32,44 +35,66 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
   const [modalOpen, setModalOpen] = useState(false);
   const [bookingRef, setBookingRef] = useState('');
 
-  const { register, handleSubmit, formState: { errors }, watch } = useForm({ 
+  const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm({ 
     resolver: zodResolver(schema),
-    defaultValues: { payment_method: 'bank_transfer', duration: 1 }
+    defaultValues: { 
+        payment_method: 'bank_transfer', 
+        numMonths: 2,
+        startDate: new Date().toISOString().split('T')[0]
+    }
   });
 
   const paymentMethod = watch('payment_method');
-  const duration = watch('duration');
+  const startDate = watch('startDate');
+  const endDate = watch('endDate');
+  const numMonths = watch('numMonths');
 
-  let price_per_unit = 0;
-  let unit_label = '';
-  let duration_label = 'Number of Nights';
-  let show_duration = true;
+  const isHouseRent = itemType === 'house' && item.monthly_rent_price;
+  const isHousePurchase = itemType === 'house' && item.purchase_price;
+  const isVehicleRent = itemType === 'vehicle' && item.purpose !== 'buy';
+  const isVehiclePurchase = itemType === 'vehicle' && item.purpose === 'buy';
+  const isAccommodation = itemType === 'accommodation';
 
-  if (itemType === 'accommodation') {
-    price_per_unit = item.price_per_night || item.price_per_event || 0;
-    unit_label = item.price_per_night ? '/ night' : (item.price_per_event ? ' for the event' : '');
-    duration_label = item.price_per_night ? 'Number of Nights' : 'Number of Events';
-  } else if (itemType === 'house') {
-    if (item.purchase_price) {
-        price_per_unit = item.purchase_price;
-        show_duration = false;
-    } else {
-        price_per_unit = item.monthly_rent_price || 0;
-        unit_label = '/ month';
-        duration_label = 'Rental Duration (Months)';
+  // Calculate Total Amount
+  const [totalAmount, setTotalAmount] = useState(0);
+  const [displayDuration, setDisplayDuration] = useState('');
+
+  useEffect(() => {
+    let amount = 0;
+    let label = '';
+
+    if (isHousePurchase) {
+      amount = item.purchase_price;
+      label = 'Full Purchase';
+    } else if (isHouseRent) {
+      const monthlyRate = item.monthly_rent_price;
+      const months = numMonths || 2;
+      amount = monthlyRate * months;
+      label = `${months} Month(s)`;
+    } else if (isAccommodation || isVehicleRent) {
+      const dailyRate = isAccommodation ? (item.price_per_night || item.price_per_event || 0) : (item.daily_rate || 0);
+      
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const diffTime = end.getTime() - start.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        const units = diffDays > 0 ? diffDays : 1;
+        amount = dailyRate * units;
+        label = `${units} Day(s) / Night(s)`;
+      } else {
+        amount = dailyRate;
+        label = '1 Day / Night';
+      }
+    } else if (isVehiclePurchase) {
+      amount = item.sale_price;
+      label = 'Full Purchase';
     }
-  } else if (itemType === 'vehicle') {
-    if (item.sale_price) {
-        price_per_unit = item.sale_price;
-        show_duration = false;
-    } else {
-        price_per_unit = item.daily_rate || 0;
-        unit_label = '/ day';
-        duration_label = 'Number of Days';
-    }
-  }
-  
-  const totalAmount = show_duration ? price_per_unit * (duration || 1) : price_per_unit;
+
+    setTotalAmount(Math.round(amount));
+    setDisplayDuration(label);
+  }, [startDate, endDate, numMonths, item, itemType, isHouseRent, isHousePurchase, isVehicleRent, isVehiclePurchase, isAccommodation]);
 
   const onSubmit = async (data: any) => {
     setLoading(true);
@@ -78,7 +103,7 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
     Object.keys(data).forEach(key => {
       if (key === 'payment_proof') {
         if (data.payment_proof[0]) formData.append('payment_proof', data.payment_proof[0]);
-      } else {
+      } else if (key !== 'numMonths') {
         formData.append(key, data[key]);
       }
     });
@@ -88,7 +113,7 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
       bookingType = item.monthly_rent_price ? 'house_rent' : 'house_purchase';
       itemIdKey = 'house_id';
     } else if (itemType === 'vehicle') {
-      bookingType = item.purpose === 'rent' ? 'vehicle_rent' : 'vehicle_purchase';
+      bookingType = item.purpose === 'buy' ? 'vehicle_purchase' : 'vehicle_rent';
       itemIdKey = 'vehicle_id';
     } else {
       bookingType = 'accommodation';
@@ -98,6 +123,15 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
     formData.append('booking_type', bookingType);
     formData.append(itemIdKey, item.id);
     formData.append('total_amount', totalAmount.toString());
+    formData.append('start_date', data.startDate);
+
+    if (isHouseRent && data.startDate && data.numMonths) {
+        const start = new Date(data.startDate);
+        const end = new Date(start.setMonth(start.getMonth() + parseInt(data.numMonths)));
+        formData.append('end_date', end.toISOString().split('T')[0]);
+    } else if (data.endDate) {
+        formData.append('end_date', data.endDate);
+    }
     
     if (item.seller_id) {
         formData.append('seller_id', item.seller_id);
@@ -134,11 +168,13 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="my-6 p-4 bg-black/20 rounded-xl text-center">
           <p className="text-xs font-black text-gray-300 uppercase tracking-widest mb-1">
-            {show_duration ? 'Total Amount' : 'Purchase Price'}
+            {isHousePurchase || isVehiclePurchase ? 'Purchase Price' : 'Total Amount Due'}
           </p>
           <p className="text-3xl font-black text-white tracking-tighter">
             Rwf {totalAmount?.toLocaleString()}
-            {show_duration && <span className="text-base font-bold normal-case text-gray-300/80 ml-1"> for {duration} {unit_label.replace('/','').trim()}(s)</span>}
+          </p>
+          <p className="text-[10px] font-bold text-accent-orange uppercase tracking-widest mt-1">
+            Based on {displayDuration}
           </p>
         </div>
 
@@ -157,13 +193,38 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
           {errors.phone && <p className={errorStyles}>{errors.phone.message as string}</p>}
         </div>
 
-        {show_duration && (
-          <div>
-            <label className="text-xs font-bold text-gray-300 uppercase ml-2">{duration_label}</label>
-            <input {...register('duration')} type="number" placeholder={duration_label} className={`${inputStyles} mt-1`} />
-            {errors.duration && <p className={errorStyles}>{errors.duration.message as string}</p>}
-          </div>
-        )}
+        {/* --- DYNAMIC DATE/DURATION FIELDS --- */}
+        <div className="space-y-4 pt-2 border-t border-white/5 mt-4">
+            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <CalendarIcon size={12} /> Scheduling Details
+            </h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label className="text-[9px] font-black text-gray-400 uppercase ml-1">Start Date / Check-in</label>
+                    <input {...register('startDate')} type="date" className={`${inputStyles} mt-1`} min={new Date().toISOString().split('T')[0]} />
+                    {errors.startDate && <p className={errorStyles}>{errors.startDate.message as string}</p>}
+                </div>
+
+                {/* For House Rent: Number of Months Input */}
+                {isHouseRent && (
+                    <div>
+                        <label className="text-[9px] font-black text-gray-400 uppercase ml-1">Rental Duration (Months)</label>
+                        <input {...register('numMonths')} type="number" min="2" placeholder="Min 2 months" className={`${inputStyles} mt-1`} />
+                        {errors.numMonths && <p className={errorStyles}>{errors.numMonths.message as string}</p>}
+                    </div>
+                )}
+
+                {/* For Accommodation / Vehicle Rent: End Date */}
+                {(isAccommodation || isVehicleRent) && (
+                    <div>
+                        <label className="text-[9px] font-black text-gray-400 uppercase ml-1">End Date / Check-out</label>
+                        <input {...register('endDate')} type="date" className={`${inputStyles} mt-1`} min={startDate} />
+                        {errors.endDate && <p className={errorStyles}>{errors.endDate.message as string}</p>}
+                    </div>
+                )}
+            </div>
+        </div>
 
         <div>
           <label className="text-xs font-bold text-gray-300 uppercase ml-2">Select Payment Method</label>

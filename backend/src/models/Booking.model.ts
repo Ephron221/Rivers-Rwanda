@@ -2,12 +2,10 @@ import { query } from '../database/connection';
 import { RowDataPacket } from 'mysql2';
 import { v4 as uuidv4 } from 'uuid';
 
-// ... (getBookingDetailsForInvoice and other interfaces remain here) ...
-
 export const getBookingsByClientId = async (clientId: string): Promise<Booking[]> => {
   const sql = `
     SELECT 
-      b.*, -- Select all from bookings, including the correct b.payment_status
+      b.*,
       p.payment_proof_path
     FROM bookings as b
     LEFT JOIN payments as p ON b.id = p.booking_id
@@ -15,6 +13,22 @@ export const getBookingsByClientId = async (clientId: string): Promise<Booking[]
     ORDER BY b.created_at DESC
   `;
   return await query<Booking[]>(sql, [clientId]);
+};
+
+export const getBookingsBySellerId = async (sellerId: string): Promise<Booking[]> => {
+  const sql = `
+    SELECT 
+      b.*,
+      p.payment_proof_path,
+      CONCAT(c.first_name, ' ', c.last_name) as client_name,
+      c.phone_number as client_phone
+    FROM bookings as b
+    LEFT JOIN clients as c ON b.client_id = c.id
+    LEFT JOIN payments as p ON b.id = p.booking_id
+    WHERE b.seller_id = ? 
+    ORDER BY b.created_at DESC
+  `;
+  return await query<Booking[]>(sql, [sellerId]);
 };
 
 export const getBookingById = async (id: string): Promise<Booking | null> => {
@@ -28,8 +42,6 @@ export const updateBookingPaymentStatus = async (id: string, status: string): Pr
   await query(sql, [status, id]);
 };
 
-// --- The rest of the file remains unchanged ---
-
 export const getBookingDetailsForInvoice = async (bookingId: string): Promise<any> => {
     const sql = `
         SELECT
@@ -39,7 +51,7 @@ export const getBookingDetailsForInvoice = async (bookingId: string): Promise<an
             c.phone_number as client_phone,
             u.email as client_email,
             p.payment_method,
-            p.status as payment_status_from_payment_table, -- alias to avoid conflict
+            p.status as payment_status_from_payment_table,
             h.title as house_title,
             h.full_address as house_address,
             v.make as vehicle_make,
@@ -63,10 +75,13 @@ export interface Booking extends RowDataPacket {
   booking_type: 'accommodation' | 'vehicle_rent' | 'vehicle_purchase' | 'house_rent' | 'house_purchase';
   booking_reference: string;
   client_id: string;
+  seller_id?: string;
   agent_id?: string;
   accommodation_id?: string;
   vehicle_id?: string;
   house_id?: string;
+  start_date?: Date;
+  end_date?: Date;
   total_amount: number;
   booking_status: 'pending' | 'approved' | 'confirmed' | 'completed' | 'cancelled' | 'rejected';
   payment_status?: 'pending' | 'paid' | 'refunded';
@@ -84,18 +99,21 @@ export const createBooking = async (data: any): Promise<Booking> => {
   const reference = 'RR' + Math.random().toString(36).substr(2, 9).toUpperCase();
   const bookingId = uuidv4();
   const sql = `
-    INSERT INTO bookings (id, booking_type, booking_reference, client_id, agent_id, accommodation_id, vehicle_id, house_id, total_amount, booking_status, payment_status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending')
+    INSERT INTO bookings (id, booking_type, booking_reference, client_id, seller_id, agent_id, accommodation_id, vehicle_id, house_id, start_date, end_date, total_amount, booking_status, payment_status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending')
   `;
   await query(sql, [
     bookingId,
     data.booking_type,
     reference,
     data.client_id,
+    data.seller_id || null,
     data.agent_id || null,
     data.accommodation_id || null,
     data.vehicle_id || null,
     data.house_id || null,
+    data.start_date || null,
+    data.end_date || null,
     data.total_amount
   ]);
 

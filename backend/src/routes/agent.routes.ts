@@ -3,7 +3,8 @@ import {
   getMyCommissions, 
   getMyStats, 
   getMyReferralCode, 
-  getMyClients 
+  getMyClients,
+  confirmPayoutReceipt
 } from '../controllers/agent.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
 
@@ -17,5 +18,6 @@ router.get('/commissions', getMyCommissions);
 router.get('/stats', getMyStats);
 router.get('/referral-code', getMyReferralCode);
 router.get('/clients', getMyClients);
+router.patch('/commissions/:id/confirm-receipt', confirmPayoutReceipt);
 
 export default router;

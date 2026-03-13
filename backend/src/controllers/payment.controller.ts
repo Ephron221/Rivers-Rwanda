@@ -80,7 +80,7 @@ export const confirmPayment = async (req: Request, res: Response, next: NextFunc
         await BookingModel.updateBookingPaymentStatus(bookingId, 'paid');
 
         let propertyName = "Property";
-        let sellerId = booking.seller_id;
+        let sellerId: string | null | undefined = booking.seller_id;
 
         // 4. Resolve Property Specifics
         if (booking.house_id) {
@@ -120,7 +120,7 @@ export const confirmPayment = async (req: Request, res: Response, next: NextFunc
             booking_id: bookingId,
             amount: systemFee,
             commission_type: 'system',
-            seller_id: sellerId,
+            seller_id: sellerId || undefined,
             status: 'approved'
         });
 

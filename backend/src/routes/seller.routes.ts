@@ -1,12 +1,18 @@
 import { Router } from 'express';
 import * as sellerController from '../controllers/seller.controller';
-import { authenticate } from '../middleware/auth.middleware';
+import { getSellerBookings } from '../controllers/booking.controller';
+import { authenticate, authorize } from '../middleware/auth.middleware';
 
 const router = Router();
 
 router.post('/register', sellerController.registerSeller);
 router.post('/verify-otp', sellerController.verifyOtp);
 
-router.get('/products', authenticate, sellerController.getSellerProducts);
+// Protected routes
+router.use(authenticate, authorize('seller'));
+router.get('/bookings', getSellerBookings);
+router.get('/products', sellerController.getSellerProducts);
+router.get('/earnings', sellerController.getMyEarnings);
+router.patch('/commissions/:id/confirm-receipt', sellerController.confirmPayoutReceipt);
 
 export default router;

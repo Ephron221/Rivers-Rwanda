@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
-import { CheckCircle, XCircle, Clock, Check, CreditCard, Eye, Trash2, Download, Printer, X } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Check, CreditCard, Eye, Trash2, Download, Printer, X, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Invoice from '../../components/common/Invoice';
 
@@ -77,6 +77,15 @@ const BookingManagement = () => {
       }
   }
 
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
   if (loading) return (
     <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-orange"></div></div>
   );
@@ -113,7 +122,7 @@ const BookingManagement = () => {
             <table className="w-full text-left border-collapse">
               <thead className="bg-gray-50 text-text-light uppercase text-[10px] font-bold tracking-widest">
                 <tr>
-                  <th className="px-6 py-4">Booking Info</th>
+                  <th className="px-6 py-4">Booking Info & Dates</th>
                   <th className="px-6 py-4">Client</th>
                   <th className="px-6 py-4">Amount</th>
                   <th className="px-6 py-4">Booking Status</th>
@@ -126,7 +135,15 @@ const BookingManagement = () => {
                   <tr key={booking.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <p className="font-bold text-primary-dark capitalize">{booking.booking_type.replace('_', ' ')}</p>
-                      <p className="font-mono text-xs text-text-light mt-1">{booking.booking_reference}</p>
+                      <p className="font-mono text-[10px] text-text-light mt-0.5">{booking.booking_reference}</p>
+                      <div className="mt-2 flex flex-col gap-1 text-[10px] font-bold uppercase tracking-tighter">
+                        <div className="flex items-center gap-1.5 text-orange-600">
+                          <Calendar size={12} /> From: {formatDate(booking.start_date)}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-red-600">
+                          <Calendar size={12} /> To: {formatDate(booking.end_date)}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <p className="font-bold text-primary-dark">{booking.client_name}</p>

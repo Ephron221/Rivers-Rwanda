@@ -9,9 +9,10 @@ export interface Commission extends RowDataPacket {
   booking_id: string;
   amount: number;
   commission_type: 'system' | 'agent' | 'seller_payout';
-  status: 'pending' | 'approved' | 'paid' | 'cancelled';
+  status: 'pending' | 'approved' | 'paid' | 'completed' | 'cancelled';
   earned_at: Date;
   paid_at?: Date;
+  payout_proof_path?: string;
 }
 
 export const createCommission = async (data: { 
@@ -43,9 +44,14 @@ export const getCommissionsByAgentId = async (agentId: string): Promise<Commissi
   return await query<Commission[]>(sql, [agentId]);
 };
 
+export const getCommissionsBySellerId = async (sellerId: string): Promise<Commission[]> => {
+  const sql = 'SELECT * FROM commissions WHERE seller_id = ? AND commission_type = "seller_payout" ORDER BY earned_at DESC';
+  return await query<Commission[]>(sql, [sellerId]);
+};
+
 export const getAgentStats = async (agentId: string): Promise<any> => {
-  const totalEarnedSql = 'SELECT SUM(amount) as totalEarned FROM commissions WHERE agent_id = ? AND commission_type = "agent" AND status IN ("approved", "paid")';
-  const pendingSql = 'SELECT SUM(amount) as totalPending FROM commissions WHERE agent_id = ? AND commission_type = "agent" AND status = "pending"';
+  const totalEarnedSql = 'SELECT SUM(amount) as totalEarned FROM commissions WHERE agent_id = ? AND commission_type = "agent" AND status IN ("paid", "completed")';
+  const pendingSql = 'SELECT SUM(amount) as totalPending FROM commissions WHERE agent_id = ? AND commission_type = "agent" AND status IN ("pending", "approved")';
   const clientsSql = 'SELECT COUNT(DISTINCT client_id) as totalClients FROM bookings WHERE agent_id = ?';
   
   const [totalEarnedResult] = await query<any[]>(totalEarnedSql, [agentId]);
@@ -59,10 +65,15 @@ export const getAgentStats = async (agentId: string): Promise<any> => {
   };
 };
 
-export const updateCommissionStatus = async (id: string, status: string): Promise<void> => {
+export const updateCommissionStatus = async (id: string, status: string, payoutProof?: string): Promise<void> => {
   let sql = 'UPDATE commissions SET status = ?';
   const params: any[] = [status];
   
+  if (payoutProof) {
+    sql += ', payout_proof_path = ?';
+    params.push(payoutProof);
+  }
+
   if (status === 'paid') {
     sql += ', paid_at = CURRENT_TIMESTAMP';
   }

@@ -41,6 +41,65 @@ export const getMyStats = async (req: AuthenticatedRequest, res: Response, next:
   }
 };
 
+export const confirmPayoutReceipt = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+        const { id } = req.params;
+        const agentId = await getAgentId(req.user?.userId);
+        
+        const [commission] = await query<any[]>('SELECT * FROM commissions WHERE id = ? AND agent_id = ?', [id, agentId]);
+        
+        if (!commission) {
+            return res.status(404).json({ success: false, message: 'Commission record not found or unauthorized.' });
+        }
+
+        if (commission.status !== 'paid') {
+            return res.status(400).json({ success: false, message: 'Payout has not been marked as paid by Admin yet.' });
+        }
+
+        await CommissionModel.updateCommissionStatus(id, 'completed');
+        res.status(200).json({ success: true, message: 'Payout receipt confirmed. Thank you!' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const rejectPayoutReceipt = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+        const { id } = req.params;
+        const agentId = await getAgentId(req.user?.userId);
+        
+        const [commission] = await query<any[]>('SELECT * FROM commissions WHERE id = ? AND agent_id = ?', [id, agentId]);
+        
+        if (!commission) {
+            return res.status(404).json({ success: false, message: 'Commission record not found or unauthorized.' });
+        }
+
+        if (commission.status !== 'paid') {
+            return res.status(400).json({ success: false, message: 'Only paid commissions can be rejected.' });
+        }
+
+        // Set status back to approved so admin can re-upload proof or correct payment
+        await CommissionModel.updateCommissionStatus(id, 'approved');
+        // Clear the bad proof path? Or keep it for history? Let's clear it to allow fresh upload
+        await query('UPDATE commissions SET payout_proof_path = NULL WHERE id = ?', [id]);
+
+        res.status(200).json({ success: true, message: 'Payout rejected. Admin has been notified to re-verify payment.' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const deleteMyCommission = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+        const { id } = req.params;
+        const agentId = await getAgentId(req.user?.userId);
+        await query('DELETE FROM commissions WHERE id = ? AND agent_id = ?', [id, agentId]);
+        res.status(200).json({ success: true, message: 'Commission record removed from your view.' });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const getMyReferralCode = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;

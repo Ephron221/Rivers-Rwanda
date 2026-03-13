@@ -5,6 +5,14 @@ import * as UserModel from '../models/User.model';
 import * as CommissionModel from '../models/Commission.model';
 import { hashPassword } from '../utils/bcrypt.utils';
 
+const getRelativePath = (fullPath: string): string => {
+    const uploadsDir = 'uploads';
+    const uploadsIndex = fullPath.indexOf('uploads');
+    if (uploadsIndex === -1) return fullPath; 
+    const relativePath = fullPath.substring(uploadsIndex);
+    return '/' + relativePath.replace(/\\/g, '/');
+}
+
 export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const users = await UserModel.getAllUsers();
@@ -420,20 +428,20 @@ export const getAllCommissions = async (req: Request, res: Response, next: NextF
   try {
     const sql = `
       SELECT 
-        c.id, c.amount, c.status, c.earned_at, c.commission_type,
+        c.id, c.amount, c.status, c.earned_at, c.commission_type, c.payout_proof_path,
         CASE 
           WHEN c.commission_type = 'agent' THEN a.first_name 
-          WHEN c.commission_type = 'system' THEN s.first_name 
+          WHEN c.commission_type = 'seller_payout' THEN s.first_name 
           ELSE 'System' 
         END as first_name,
         CASE 
           WHEN c.commission_type = 'agent' THEN a.last_name 
-          WHEN c.commission_type = 'system' THEN s.last_name 
+          WHEN c.commission_type = 'seller_payout' THEN s.last_name 
           ELSE 'Owner' 
         END as last_name,
         CASE 
           WHEN c.commission_type = 'agent' THEN a.phone_number 
-          WHEN c.commission_type = 'system' THEN s.phone_number 
+          WHEN c.commission_type = 'seller_payout' THEN s.phone_number 
           ELSE 'N/A' 
         END as phone_number
       FROM commissions c
@@ -445,6 +453,22 @@ export const getAllCommissions = async (req: Request, res: Response, next: NextF
     res.status(200).json({ success: true, data: commissions });
   } catch (error) {
     console.error('[GET_ALL_COMMISSIONS_ERROR]:', error);
+    next(error);
+  }
+};
+
+export const payCommission = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const payoutProof = req.file ? getRelativePath(req.file.path) : undefined;
+    
+    if (!payoutProof) {
+        return res.status(400).json({ success: false, message: 'Payout proof is required.' });
+    }
+
+    await CommissionModel.updateCommissionStatus(id, 'paid', payoutProof);
+    res.status(200).json({ success: true, message: 'Commission marked as paid. Proof uploaded.' });
+  } catch (error) {
     next(error);
   }
 };

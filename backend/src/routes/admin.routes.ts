@@ -24,10 +24,11 @@ import {
   rejectProduct,
   deleteProduct,
   getAllCommissions,
-  markCommissionAsPaid,
+  payCommission,
   deleteCommission
 } from '../controllers/admin.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
+import { uploadPayoutProof } from '../middleware/upload.middleware';
 
 const router = Router();
 
@@ -70,7 +71,7 @@ router.patch('/bookings/:bookingId/verify-payment', verifyBookingPayment);
 
 // Commission & Payout Management
 router.get('/commissions', getAllCommissions);
-router.patch('/commissions/:id/pay', markCommissionAsPaid);
+router.patch('/commissions/:id/pay', uploadPayoutProof, payCommission);
 router.delete('/commissions/:id', deleteCommission);
 
 export default router;

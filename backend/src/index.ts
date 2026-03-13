@@ -4,9 +4,52 @@ import path from 'path';
 import allRoutes from './routes';
 import { errorHandler } from './middleware/error.middleware';
 import { connectDatabase } from './database/connection';
+import { query } from './database/connection';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+/**
+ * Daily Task to check for expired bookings
+ * Resets property status to 'pending_approval' after the booking end date
+ */
+const checkExpiredBookings = async () => {
+  try {
+    console.log('[CLEANUP]: Checking for expired bookings...');
+    const now = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // 1. Get all 'confirmed' or 'approved' bookings that reached their end_date
+    const expiredBookings = await query<any[]>(
+      `SELECT id, booking_type, house_id, vehicle_id, accommodation_id 
+       FROM bookings 
+       WHERE end_date < ? AND booking_status IN ('confirmed', 'approved')`,
+      [now]
+    );
+
+    if (expiredBookings.length === 0) {
+      console.log('[CLEANUP]: No expired bookings found.');
+      return;
+    }
+
+    for (const booking of expiredBookings) {
+      // Update Booking Status to 'completed'
+      await query("UPDATE bookings SET booking_status = 'completed' WHERE id = ?", [booking.id]);
+
+      // Reset Property to 'pending_approval' so Admin can re-verify
+      if (booking.house_id) {
+        await query("UPDATE houses SET status = 'pending_approval' WHERE id = ?", [booking.house_id]);
+      } else if (booking.vehicle_id) {
+        await query("UPDATE vehicles SET status = 'pending_approval' WHERE id = ?", [booking.vehicle_id]);
+      } else if (booking.accommodation_id) {
+        await query("UPDATE accommodations SET status = 'pending_approval' WHERE id = ?", [booking.accommodation_id]);
+      }
+      
+      console.log(`[CLEANUP]: Property reset for expired booking ${booking.id}`);
+    }
+  } catch (error) {
+    console.error('[CLEANUP_ERROR]:', error);
+  }
+};
 
 // --- Start Server Function ---
 const startServer = async () => {
@@ -28,6 +71,12 @@ const startServer = async () => {
 
     // Global Error Handler
     app.use(errorHandler);
+
+    // Run cleanup once on startup
+    await checkExpiredBookings();
+    
+    // Run cleanup every 24 hours
+    setInterval(checkExpiredBookings, 24 * 60 * 60 * 1000);
 
     // Start Listening
     app.listen(PORT, () => {
