@@ -52,6 +52,7 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
 
   const paymentMethod = watch('payment_method');
   const startDate = watch('startDate');
+  const endDate = watch('endDate');
   const numMonths = watch('numMonths');
 
   const isHouseRent = itemType === 'house' && item.monthly_rent_price;
@@ -79,16 +80,15 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
     } else if (isAccommodation || isVehicleRent) {
       const dailyRate = isAccommodation ? (item.price_per_night || item.price_per_event || 0) : (item.daily_rate || 0);
       
-      const watchEndDate = (watch as any)('endDate');
-      if (startDate && watchEndDate) {
+      if (startDate && endDate) {
         const start = new Date(startDate);
-        const end = new Date(watchEndDate);
+        const end = new Date(endDate);
         const diffTime = end.getTime() - start.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
         const units = diffDays > 0 ? diffDays : 1;
         amount = dailyRate * units;
-        label = `${units} ${t('booking.days')}`;
+        label = `${units} ${units > 1 ? t('booking.days') : t('booking.day')}`;
       } else {
         amount = dailyRate;
         label = `1 ${t('booking.day')}`;
@@ -100,7 +100,7 @@ const BookingForm = ({ item, itemType }: { item: any, itemType: 'house' | 'vehic
 
     setTotalAmount(Math.round(amount));
     setDisplayDuration(label);
-  }, [startDate, numMonths, item, itemType, isHouseRent, isHousePurchase, isVehicleRent, isVehiclePurchase, isAccommodation, t, watch]);
+  }, [startDate, endDate, numMonths, item, itemType, isHouseRent, isHousePurchase, isVehicleRent, isVehiclePurchase, isAccommodation, t]);
 
   const onSubmit = async (data: FormData) => {
     setLoading(true);
