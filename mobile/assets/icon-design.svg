@@ -1,0 +1,62 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1024" height="1024" fill="#0f294d"/>
+  
+  <!-- Gradient definitions -->
+  <defs>
+    <linearGradient id="waterGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFA500;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF8C00;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="landGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2ecc71;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#27ae60;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="glowGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Mountain/Hills representing Rwanda landscape -->
+  <path d="M 150 600 L 350 350 L 500 450 L 700 250 L 850 500 L 1000 400 L 1024 600 L 1024 1024 L 0 1024 Z" fill="url(#landGradient)"/>
+  
+  <!-- River flowing through landscape - main feature in brand orange -->
+  <path d="M 250 400 Q 280 450 300 520 Q 320 580 350 620 Q 380 680 420 720 Q 460 760 500 780" 
+        stroke="url(#waterGradient)" stroke-width="80" fill="none" stroke-linecap="round"/>
+  
+  <!-- River curves and secondary flows -->
+  <path d="M 500 780 Q 550 800 600 820 Q 650 840 720 860" 
+        stroke="url(#waterGradient)" stroke-width="60" fill="none" stroke-linecap="round" opacity="0.85"/>
+  
+  <!-- Water droplets/accent elements -->
+  <circle cx="320" cy="480" r="35" fill="#FFA500" opacity="0.7"/>
+  <circle cx="480" cy="700" r="28" fill="#FFA500" opacity="0.6"/>
+  
+  <!-- House/accommodation symbol - building with brand colors -->
+  <g>
+    <!-- House shape (roof) in brand orange -->
+    <path d="M 700 300 L 800 200 L 900 300 Z" fill="#FFA500" opacity="0.95"/>
+    <!-- House body -->
+    <rect x="700" y="300" width="200" height="150" fill="#FF8C00"/>
+    <!-- Door -->
+    <rect x="775" y="350" width="50" height="100" fill="#0f294d"/>
+    <!-- Window 1 -->
+    <rect x="720" y="320" width="40" height="40" fill="#87ceeb"/>
+    <!-- Window 2 -->
+    <rect x="840" y="320" width="40" height="40" fill="#87ceeb"/>
+  </g>
+  
+  <!-- Large "R" Letter - Brand Initial -->
+  <g>
+    <!-- R Letter in brand orange -->
+    <text x="512" y="800" font-family="Arial, sans-serif" font-size="280" font-weight="bold" fill="#FFA500" text-anchor="middle" opacity="0.95">R</text>
+    <!-- R Letter shadow/depth -->
+    <text x="515" y="805" font-family="Arial, sans-serif" font-size="280" font-weight="bold" fill="#0f294d" text-anchor="middle" opacity="0.3">R</text>
+  </g>
+  
+  <!-- Glow effect overlay -->
+  <circle cx="512" cy="512" r="450" fill="url(#glowGradient)"/>
+  
+
+</svg>

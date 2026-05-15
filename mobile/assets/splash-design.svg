@@ -1,0 +1,58 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark blue background matching app theme -->
+  <rect width="1024" height="1024" fill="#0f294d"/>
+  
+  <defs>
+    <linearGradient id="waterGradSplash" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFA500;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF8C00;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="landGradSplash" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2ecc71;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#27ae60;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Mountain landscape -->
+  <path d="M 100 550 L 300 350 L 450 450 L 650 250 L 850 480 L 1000 400 L 1024 550 L 1024 1024 L 0 1024 Z" fill="url(#landGradSplash)"/>
+  
+  <!-- Main river in brand orange -->
+  <path d="M 250 380 Q 280 430 300 500 Q 320 560 350 620 Q 380 680 420 740" 
+        stroke="url(#waterGradSplash)" stroke-width="70" fill="none" stroke-linecap="round"/>
+  
+  <!-- Secondary river -->
+  <path d="M 420 740 Q 460 780 520 820" 
+        stroke="url(#waterGradSplash)" stroke-width="50" fill="none" stroke-linecap="round" opacity="0.85"/>
+  
+  <!-- Accommodation building in foreground with brand colors -->
+  <g>
+    <!-- Large building (hotel/lodge) -->
+    <path d="M 600 200 L 750 80 L 900 200 Z" fill="#FFA500"/>
+    <rect x="600" y="200" width="300" height="200" fill="#FF8C00"/>
+    
+    <!-- Building windows grid -->
+    <circle cx="650" cy="240" r="20" fill="#87ceeb"/>
+    <circle cx="720" cy="240" r="20" fill="#87ceeb"/>
+    <circle cx="790" cy="240" r="20" fill="#87ceeb"/>
+    <circle cx="850" cy="240" r="20" fill="#87ceeb"/>
+    
+    <circle cx="650" cy="320" r="20" fill="#87ceeb"/>
+    <circle cx="720" cy="320" r="20" fill="#87ceeb"/>
+    <circle cx="790" cy="320" r="20" fill="#87ceeb"/>
+    <circle cx="850" cy="320" r="20" fill="#87ceeb"/>
+    
+    <!-- Door -->
+    <rect x="720" y="350" width="60" height="50" fill="#0f294d"/>
+  </g>
+  
+  <!-- Decorative water droplets -->
+  <circle cx="200" cy="420" r="25" fill="#FFA500" opacity="0.5"/>
+  <circle cx="950" cy="300" r="18" fill="#2ecc71" opacity="0.4"/>
+  
+  <!-- Large R Letter in brand orange -->
+  <text x="512" y="850" font-family="Arial, sans-serif" font-size="180" font-weight="bold" fill="#FFA500" text-anchor="middle">R</text>
+  
+  <!-- Text area -->
+  <text x="512" y="920" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#ffffff" text-anchor="middle">Rivers Rwanda</text>
+  <text x="512" y="970" font-family="Arial, sans-serif" font-size="24" fill="#FFA500" text-anchor="middle">Your Travel Platform</text>
+</svg>

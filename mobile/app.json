@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "Rivers Rwanda",
+    "slug": "rivers-rwanda",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "rivers-rwanda",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f294d"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.riversrwanda.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow Rivers Rwanda to use your camera for uploading photos.",
+        "NSPhotoLibraryUsageDescription": "Allow Rivers Rwanda to access your photos for payment proof upload."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f294d"
+      },
+      "package": "com.riversrwanda.app",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Rivers Rwanda to access your photos for payment proof upload.",
+          "cameraPermission": "Allow Rivers Rwanda to use your camera."
+        }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": []
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

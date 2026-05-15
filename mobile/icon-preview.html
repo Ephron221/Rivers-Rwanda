@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rivers Rwanda - Icon Preview</title>
+    <link rel="manifest" href="./public/manifest.json">
+    <meta name="theme-color" content="#0f294d">
+    
+    <!-- Favicon Links -->
+    <link rel="icon" type="image/png" sizes="16x16" href="./assets/favicon-16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="./assets/favicon-64.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="./assets/favicon-96.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./assets/favicon-192.png">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="./assets/favicon-180.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./assets/favicon-180.png">
+    
+    <!-- Android Chrome -->
+    <link rel="icon" type="image/png" sizes="192x192" href="./assets/favicon-192.png">
+    <link rel="shortcut icon" href="./assets/favicon-32.png">
+    
+    <!-- Microsoft Tile -->
+    <meta name="msapplication-TileColor" content="#0f294d">
+    <meta name="msapplication-TileImage" content="./assets/favicon-160.png">
+    
+    <!-- Web App Meta Tags -->
+    <meta name="application-name" content="Rivers Rwanda">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Rivers Rwanda">
+    <meta name="description" content="Your complete travel, accommodation, and service platform for Rwanda">
+    <meta name="keywords" content="Rwanda, travel, accommodation, booking, tourism">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f294d 0%, #1a4a73 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .card img {
+            width: 100%;
+            height: auto;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            background: #f5f5f5;
+            padding: 10px;
+        }
+        
+        .card h3 {
+            color: #0f294d;
+            margin-bottom: 8px;
+            font-size: 1em;
+        }
+        
+        .card p {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        
+        .size-badge {
+            display: inline-block;
+            background: #0f294d;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        
+        .category {
+            margin-bottom: 50px;
+        }
+        
+        .category h2 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+            padding-bottom: 10px;
+        }
+        
+        .info-box {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .info-box h3 {
+            color: #0f294d;
+            margin-bottom: 10px;
+        }
+        
+        .info-box ul {
+            list-style-position: inside;
+            line-height: 1.8;
+        }
+        
+        .info-box li {
+            margin-bottom: 8px;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #c7254e;
+        }
+        
+        footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌍 Rivers Rwanda Icons</h1>
+            <p>Complete Icon System for Mobile & Web</p>
+        </header>
+        
+        <!-- App Icons -->
+        <div class="category">
+            <h2>📱 Application Icons</h2>
+            
+            <div class="grid">
+                <div class="card">
+                    <img src="./assets/icon.png" alt="Main App Icon 1024x1024">
+                    <h3>Main App Icon</h3>
+                    <p>Primary icon for all platforms</p>
+                    <span class="size-badge">1024×1024</span>
+                </div>
+                
+                <div class="card">
+                    <img src="./assets/icon-512.png" alt="App Icon 512x512">
+                    <h3>Large App Icon</h3>
+                    <p>Android & Web displays</p>
+                    <span class="size-badge">512×512</span>
+                </div>
+                
+                <div class="card">
+                    <img src="./assets/icon-256.png" alt="App Icon 256x256">
+                    <h3>Medium App Icon</h3>
+                    <p>Tablets & web menus</p>
+                    <span class="size-badge">256×256</span>
+                </div>
+                
+                <div class="card">
+                    <img src="./assets/icon-128.png" alt="App Icon 128x128">
+                    <h3>Small App Icon</h3>
+                    <p>Desktop & small displays</p>
+                    <span class="size-badge">128×128</span>
+                </div>
+                
+                <div class="card">
+                    <img src="./assets/adaptive-icon.png" alt="Android Adaptive Icon">
+                    <h3>Android Adaptive Icon</h3>
+                    <p>Android 8+ (supports masking)</p>
+                    <span class="size-badge">216×216</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Favicon Set -->
+        <div class="category">
+            <h2>🔗 Favicon Set</h2>
+            
+            <div class="grid">
+                <div class="card">
+                    <img src="./assets/favicon-192.png" alt="Favicon 192x192">
+                    <h3>Android Chrome</h3>
+                    <p>Home screen & Android</p>
+                    <span class="size-badge">192×192</span>
+                </div>
+                
+                <div class="card">
+                    <img src="./assets/favicon-180.png" alt="Apple Touch Icon">
+                    <h3>Apple Touch Icon</h3>
+                    <p>iOS home screen</p>
+                    <span class="size-badge">180×180</span>
+                </div>
+                
+                <div class="card">
+                    <img src="./assets/favicon-160.png" alt="Windows Favicon">
+                    <h3>Windows Tile</h3>
+                    <p>Windows start menu</p>
+                    <span class="size-badge">160×160</span>
+                </div>
+                
+                <div class="card">
+                    <img src="./assets/favicon-96.png" alt="Google TV Favicon">
+                    <h3>Google TV</h3>
+                    <p>TV applications</p>
+                    <span class="size-badge">96×96</span>
+                </div>
+                
+                <div class="card">
+                    <img src="./assets/favicon-64.png" alt="Medium Favicon">
+                    <h3>Medium Size</h3>
+                    <p>Generic medium use</p>
+                    <span class="size-badge">64×64</span>
+                </div>
+                
+                <div class="card">
+                    <img src="./assets/favicon-32.png" alt="Standard Favicon">
+                    <h3>Standard Favicon</h3>
+                    <p>Browser tabs & bookmarks</p>
+                    <span class="size-badge">32×32</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Splash Screen -->
+        <div class="category">
+            <h2>🎬 Splash Screen</h2>
+            
+            <div class="grid">
+                <div class="card" style="grid-column: 1 / -1;">
+                    <img src="./assets/splash-icon.png" alt="Splash Screen">
+                    <h3>App Launch Splash Screen</h3>
+                    <p>Shown during app startup</p>
+                    <span class="size-badge">512×512</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Design Information -->
+        <div class="info-box">
+            <h3>🎨 Design System</h3>
+            <ul>
+                <li><strong>Primary Color:</strong> #0f294d (Dark Blue - Main Brand)</li>
+                <li><strong>Water Gradient:</strong> #4fb3d9 to #0f7ba2 (Rivers)</li>
+                <li><strong>Land Gradient:</strong> #2ecc71 to #27ae60 (Rwanda Landscape)</li>
+                <li><strong>Accent Colors:</strong> #e8a87c to #d9976b (Hospitality)</li>
+            </ul>
+        </div>
+        
+        <!-- Implementation Guide -->
+        <div class="info-box">
+            <h3>📋 Implementation Guide</h3>
+            <ul>
+                <li>All icons are configured in <code>app.json</code> (Expo)</li>
+                <li>Web manifest available at <code>public/manifest.json</code> (PWA support)</li>
+                <li>SVG source files available for custom modifications</li>
+                <li>All PNG sizes generated automatically from SVG sources</li>
+                <li>Supports iOS, Android, Web, and PWA platforms</li>
+            </ul>
+        </div>
+        
+        <!-- Regeneration Instructions -->
+        <div class="info-box">
+            <h3>🔄 Regenerate Icons</h3>
+            <p>To update icons after modifying SVG files:</p>
+            <ul>
+                <li><code>npm run icons:convert</code> - Generate main icon sizes</li>
+                <li><code>npm run icons:all</code> - Generate all icon sizes</li>
+                <li><code>npm run icons:clean</code> - Remove generated PNG files</li>
+            </ul>
+        </div>
+        
+        <footer>
+            <p>Rivers Rwanda Icon System • Last Updated: May 2024</p>
+            <p>For modifications, edit SVG files and regenerate PNGs using npm scripts</p>
+        </footer>
+    </div>
+</body>
+</html>
